@@ -121,6 +121,7 @@
     var status = effectiveStatus();
     if (status === "valendo") return Math.max(0, Date.parse(state.ends_at) - now());
     if (status === "pausada") return state.remaining_seconds * 1000;
+    if (status === "pronta") return state.duration_seconds * 1000;
     return 0;
   }
 
@@ -294,7 +295,7 @@
       : "";
     bar.classList.toggle("urgent", status === "valendo" && ms <= 60000);
 
-    if (!state) {
+    if (!state || status === "pronta") {
       setLocked("Aguardando a rodada começar.");
     } else if (status === "valendo") {
       setLocked("");
@@ -311,16 +312,19 @@
     if (!sending) button.disabled = !canDeliver;
   }
 
+  // Sem rodada ou rodada reiniciada ("pronta"): volta para a tela de espera.
+  function hideMaterials() {
+    loadedRun = null;
+    if (reference) reference.style.display = "none";
+    if (instructions && instructions.hasAttribute("srcdoc")) instructions.removeAttribute("srcdoc");
+  }
+
   function apply(next) {
     state = next;
-    if (state && (state.status === "valendo" || state.status === "pausada")) {
-      startRunOnThisMachine(runId(state));
-    }
-    if (state) loadMaterials();
-    else {
-      loadedRun = null;
-      if (reference) reference.style.display = "none";
-    }
+    var status = state && state.status;
+    if (status === "valendo" || status === "pausada") startRunOnThisMachine(runId(state));
+    if (state && status !== "pronta") loadMaterials();
+    else hideMaterials();
     render();
     if (effectiveStatus() === "encerrada") autoDeliver();
   }

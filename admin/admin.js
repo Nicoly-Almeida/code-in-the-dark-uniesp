@@ -38,7 +38,7 @@
     CITD_UNKNOWN_ROUND: "Rodada não encontrada.",
     CITD_INVALID_STATE: "Essa ação não vale no estado atual da rodada. Atualize a página.",
     CITD_OTHER_ROUND_ACTIVE: "Encerre a rodada em andamento antes de iniciar outra.",
-    CITD_NO_MATERIALS: "Esta rodada não tem referência e instruções. Use Importar desafios.",
+    CITD_NO_MATERIALS: "Esta rodada não tem referência e instruções. Rode o SQL das rodadas (veja SUPABASE.md).",
     CITD_INVALID_ACTION: "Ação inválida.",
   };
   function errText(error) {
@@ -174,6 +174,7 @@
     var secs = 0;
     if (status === "valendo") secs = Math.max(0, Math.ceil((Date.parse(live.ends_at) - Date.now() - state.offsetMs) / 1000));
     if (status === "pausada") secs = live.remaining_seconds;
+    if (status === "pronta") secs = live.duration_seconds;
 
     var b = $("#live-status");
     var s = STATUS[status] || ["Aguardando", "closed"];
@@ -184,9 +185,25 @@
     $("#live").classList.toggle("urgent", status === "valendo" && secs <= 60);
 
     var active = status === "valendo" || status === "pausada";
+    $("#live-start").hidden = status !== "pronta";
     $("#live-pause").hidden = !active;
     $("#live-pause").textContent = status === "pausada" ? "Retomar" : "Pausar";
     $("#live-end").hidden = !active;
+    $("#live-restart").hidden = !live || status === "pronta";
+  }
+
+  function confirmStart(roundId, title, button) {
+    if (window.confirm("Iniciar " + title + "? A referência é liberada e o tempo começa a contar para todos.")) {
+      control(roundId, "iniciar", button);
+    }
+  }
+
+  // Vale em qualquer momento (também no meio da rodada, se algo der errado).
+  function confirmRestart(roundId, title, button) {
+    if (window.confirm("Reiniciar " + title + "?\n\nO tempo para, os editores voltam a aguardar e TODAS as " +
+        "entregas desta rodada são apagadas. Depois é só dar ▶ Iniciar de novo.")) {
+      control(roundId, "reiniciar", button);
+    }
   }
 
   async function control(roundId, acao, button) {
@@ -209,6 +226,12 @@
     if (acao === "iniciar" && !res.error) await selectRound(roundId);
   }
 
+  $("#live-start").addEventListener("click", function () {
+    if (state.live) confirmStart(state.live.round, state.live.title, this);
+  });
+  $("#live-restart").addEventListener("click", function () {
+    if (state.live) confirmRestart(state.live.round, state.live.title, this);
+  });
   $("#live-pause").addEventListener("click", function () {
     var live = state.live;
     if (!live) return;
@@ -258,21 +281,12 @@
         actions.push(el("button", {
           type: "button", text: "▶ Iniciar", disabled: anyActive,
           title: anyActive ? "Encerre a rodada em andamento primeiro" : "",
-          onclick: function () {
-            if (window.confirm("Iniciar " + r.title + "? A referência é liberada e o tempo começa a contar para todos.")) {
-              control(r.id, "iniciar", this);
-            }
-          },
+          onclick: function () { confirmStart(r.id, r.title, this); },
         }));
-      }
-      if (status === "encerrada") {
+      } else {
         actions.push(el("button", {
           type: "button", className: "secondary", text: "Reiniciar",
-          onclick: function () {
-            if (window.confirm("Reiniciar " + r.title + "? Ela volta para pronta e TODAS as entregas dela são apagadas.")) {
-              control(r.id, "reiniciar", this);
-            }
-          },
+          onclick: function () { confirmRestart(r.id, r.title, this); },
         }));
       }
       actions.push(el("button", {
@@ -285,7 +299,7 @@
         el("td", { className: "time" }, [minutes, el("span", { className: "hint", text: " min" })]),
         el("td", { className: "actions" }, actions),
       ]);
-    }), "Nenhuma rodada. Use Importar desafios.", 4);
+    }), "Nenhuma rodada. Rode o SQL das rodadas no Supabase (veja SUPABASE.md).", 4);
   }
 
   async function setDuration(r, input) {

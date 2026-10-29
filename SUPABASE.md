@@ -8,7 +8,7 @@ editor/ e telão evento/ ──chave pública──▶ estado_atual ◀───
                                            entregar (só com a rodada valendo)
 ```
 
-- O **painel** importa as rodadas, dá o play, pausa, encerra e mostra as entregas.
+- O **painel** dá o play, pausa, encerra, reinicia e mostra as entregas.
 - O **editor** consulta o estado a cada 2 s. No play, carrega a referência e as
   instruções da rodada, limpa o editor (o código anterior fica guardado no
   navegador) e destrava. No fim do tempo, entrega o código sozinho e trava.
@@ -20,6 +20,8 @@ editor/ e telão evento/ ──chave pública──▶ estado_atual ◀───
 | --- | --- |
 | `supabase/migrations/20261029120000_code_in_the_dark_submissions.sql` | Base: organizadores, rodadas, entregas e RLS |
 | `supabase/migrations/20261029160000_rodadas_cronometro_sem_token.sql` | Cronômetro, materiais escondidos, entrega sem token |
+| `supabase/migrations/20261029190000_reiniciar_rodada.sql` | Reiniciar a qualquer momento (telão mostra a rodada reiniciada) |
+| `desafios/halloween/gerar-sql.mjs` (fora do Git) | Gera `rodadas-halloween.sql`, com as 5 rodadas prontas |
 | `supabase/tests/` | Testes do banco (PGlite) e de ponta a ponta (Chrome) |
 | `citd-config.js` | Configuração **pública** (URL do projeto e chave pública) |
 | `editor/assets/rodada.js` | Rodada ao vivo no editor (tempo, referência, Entregar) |
@@ -52,24 +54,28 @@ editor/ e telão evento/ ──chave pública──▶ estado_atual ◀───
 - Até 50 entregas por navegador por rodada e 2000 por rodada.
 - Duração de 1 a 120 minutos (padrão 15), editável no painel enquanto a rodada está Pronta.
 
-## Atualizar o projeto `chcmtotuohtoyybvljrd`
+## Colocar as rodadas no projeto `chcmtotuohtoyybvljrd`
 
-A primeira migration já foi aplicada. Para o modelo novo:
+As migrations `20261029120000` e `20261029160000` já foram aplicadas. Falta um
+arquivo só, que já traz a migration de **Reiniciar** e as 5 rodadas prontas:
 
-1. **SQL Editor > New query**: cole o conteúdo de
-   `supabase/migrations/20261029160000_rodadas_cronometro_sem_token.sql` e clique
-   em **Run**. Ela apaga as tabelas e funções de token (incluindo participantes e
-   envios de teste antigos) e cria o cronômetro.
-2. **Edge Functions**: a função `submit` não é mais usada. Pode apagá-la, junto com
-   o secret `ALLOWED_ORIGINS`.
-3. Publique o site (merge na `master`).
-4. Abra o painel, entre e use **Importar desafios** escolhendo a pasta
-   `desafios/halloween`. As 5 rodadas aparecem como **Pronta**. Reimportar
-   atualiza título, instruções e referência sem duplicar.
-5. Faça um ensaio (veja `EVENTO-UNIESP.md`) e termine com **Reiniciar**.
+1. Abra `desafios/halloween/rodadas-halloween.sql` (fica só no seu computador),
+   selecione tudo e copie.
+2. **SQL Editor > New query**: cole e clique em **Run**. O resultado lista as 5
+   rodadas como `pronta`, cada uma com a referência.
+3. No painel, as rodadas já aparecem como **Pronta**: é só dar **▶ Iniciar**.
+4. Faça um ensaio (veja `EVENTO-UNIESP.md`) e termine com **Reiniciar**.
+
+O arquivo pode ser rodado de novo: atualiza título, instruções e referência sem
+duplicar e sem mexer em rodada valendo nem em entregas. Se mudar algo em
+`desafios/halloween`, gere de novo com `node desafios/halloween/gerar-sql.mjs`.
+Também dá para atualizar pelo painel, em **Atualizar desafios a partir da pasta**.
+
+A Edge Function `submit` e o secret `ALLOWED_ORIGINS` não são mais usados e podem
+ser apagados em **Edge Functions**.
 
 Se for usar o Supabase CLI depois:
-`npx supabase migration repair --status applied 20261029120000 20261029160000`.
+`npx supabase migration repair --status applied 20261029120000 20261029160000 20261029190000`.
 
 ### Novo organizador
 
@@ -88,14 +94,22 @@ Cada rodada é uma pasta `rodada-N-nome/assets/` com `instructions.html` (a
 primeira linha `=== TÍTULO ===` vira o nome da rodada) e `page.png` (a
 referência). As imagens que os participantes usam no código vão para
 `editor/assets/` (públicas, nomes únicos entre rodadas). O `referencia.html`
-nunca é enviado.
+nunca é enviado. Depois, gere o SQL com `gerar-sql.mjs` e rode no SQL Editor.
+
+### Reiniciar
+
+**Reiniciar** funciona em qualquer momento (valendo, pausada ou encerrada): o
+tempo para, a rodada volta para **Pronta**, as entregas dela são apagadas e o
+telão e os editores voltam a aguardar. No próximo **▶ Iniciar**, os editores
+começam limpos (o código anterior fica guardado no navegador do participante).
 
 ## Testes
 
 ```bash
 cd supabase/tests
 npm install
-npm test        # migrations no PGlite: permissões, play, pausa, fim, tolerância, limites
+npm test        # migrations no PGlite: permissões, play, pausa, fim, tolerância, limites, reiniciar
+npm run seed    # rodadas-halloween.sql no estado atual do projeto (precisa da pasta desafios/)
 npm run e2e     # Chrome headless: painel, telão e dois participantes contra um Supabase simulado
 ```
 

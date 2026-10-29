@@ -185,6 +185,8 @@
           if (remaining === 0) phase = "encerrada";
         } else if (phase === "pausada") {
           remaining = state.remaining_seconds;
+        } else if (phase === "pronta") {
+          remaining = state.duration_seconds;
         }
 
         var display = state
@@ -197,6 +199,7 @@
         document.body.classList.toggle("finished", phase === "encerrada");
 
         var text = {
+          pronta: ["Próxima rodada", "Aguardando o início"],
           valendo: ["Rodada em andamento", "Competidores, podem começar"],
           pausada: ["Rodada pausada", "Rodada pausada"],
           encerrada: ["Rodada encerrada", "Tempo esgotado: parem de digitar"],

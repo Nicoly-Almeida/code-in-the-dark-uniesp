@@ -186,6 +186,28 @@ try {
   await bia.eval(`document.getElementById("editor").env.editor.insert("<h1>Doces da Bia</h1>")`);
   ok("rodada 2: editor limpo (rodada 1 guardada como backup), resultado anterior fechado, Bia participa");
 
+  // Reiniciar no meio da rodada (ex.: problema técnico) e começar de novo.
+  await bia.eval(`document.querySelector(".deliver-button").click()`);
+  await bia.waitFor(`${barMsg}.startsWith("Entregue às")`, "entrega da Bia antes de reiniciar");
+  await admin.waitFor(`!document.getElementById("live-restart").hidden`, "Reiniciar no topo durante a rodada");
+  await admin.eval(`document.getElementById("live-restart").click()`);
+  await bia.waitFor(`${lockText}.includes("Aguardando")`, "Bia volta a aguardar");
+  if (await bia.eval(`getComputedStyle(document.querySelector(".reference-screenshot-container")).display`) !== "none") throw new Error("referência visível depois de reiniciar");
+  if (!(await bia.eval(`document.querySelector(".deliver-button").disabled`))) throw new Error("Entregar habilitado depois de reiniciar");
+  await telao.waitFor(`document.getElementById("label").textContent === "Próxima rodada" && document.getElementById("title").textContent.includes("RODADA 2") && document.getElementById("clock").textContent === "15:00"`, "telão com a rodada 2 pronta");
+  if (await telao.eval(`document.body.classList.contains("finished")`)) throw new Error("telão vermelho depois de reiniciar");
+  await admin.waitFor(`!document.getElementById("live-start").hidden && document.getElementById("live-clock").textContent === "15:00"`, "Iniciar no topo");
+  const apagadas = await db.query(`select count(*)::int as n from public.submissions where round_id = 'rodada-2-doce-mordida'`);
+  if (apagadas.rows[0].n !== 0) throw new Error("entregas não apagadas");
+  await shot(bia, "5-editor-reiniciada"); await shot(telao, "5-telao-reiniciada"); await shot(admin, "5-painel-reiniciada");
+  ok("reiniciar no meio: editores voltam a aguardar, telão mostra RODADA 2 em 15:00, entregas apagadas");
+
+  await admin.eval(`document.getElementById("live-start").click()`);
+  await bia.waitFor(`${lockText} === ""`, "Bia destrava de novo");
+  if (await bia.eval(`document.getElementById("editor").env.editor.getValue()`) !== "") throw new Error("editor da Bia não começou limpo");
+  await bia.eval(`document.getElementById("editor").env.editor.insert("<h1>Doces da Bia v2</h1>")`);
+  ok("▶ Iniciar de novo: tempo recomeça e o editor começa limpo");
+
   await admin.eval(`document.getElementById("live-end").click()`);
   await bia.waitFor(`${barMsg}.startsWith("Entregue às")`, "entrega automática da Bia ao encerrar", 8000);
   await ana.waitFor(`${barMsg}.includes("vazio")`, "Ana sem código na rodada 2", 8000);

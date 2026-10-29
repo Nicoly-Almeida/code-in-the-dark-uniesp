@@ -5,6 +5,7 @@
   "description": "Testes do banco (PGlite) e de ponta a ponta (Chrome headless + Supabase simulado).",
   "scripts": {
     "test": "node db-test.mjs",
+    "seed": "node seed-test.mjs",
     "e2e": "node e2e.mjs"
   },
   "devDependencies": {

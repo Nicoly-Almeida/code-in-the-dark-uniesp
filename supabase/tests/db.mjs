@@ -9,7 +9,8 @@ export const REPO = fileURLToPath(new URL("../..", import.meta.url));
 export const ORG = "00000000-0000-4000-8000-0000000000a1";
 export const CURIOSO = "00000000-0000-4000-8000-0000000000b2";
 
-export async function createDb(repo) {
+// skip: migrations a não aplicar (para simular um projeto ainda sem elas).
+export async function createDb(repo, { skip = [] } = {}) {
   const db = new PGlite();
   await db.exec(`
     create role anon nologin;
@@ -28,7 +29,7 @@ export async function createDb(repo) {
     alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
   `);
   const dir = join(repo, "supabase", "migrations");
-  for (const file of readdirSync(dir).sort()) {
+  for (const file of readdirSync(dir).sort().filter((f) => !skip.includes(f))) {
     let sql = readFileSync(join(dir, file), "utf8");
     sql = sql.replace(/create extension if not exists pgcrypto[^;]*;/, "");
     await db.exec(sql);

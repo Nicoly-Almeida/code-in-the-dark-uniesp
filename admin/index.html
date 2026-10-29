@@ -43,8 +43,10 @@
         </div>
         <div class="live-clock" id="live-clock" role="timer">--:--</div>
         <div class="round-actions">
+          <button type="button" id="live-start" hidden>▶ Iniciar</button>
           <button type="button" id="live-pause" hidden>Pausar</button>
           <button type="button" id="live-end" class="danger" hidden>Encerrar agora</button>
+          <button type="button" id="live-restart" class="secondary" hidden>Reiniciar</button>
           <a class="button secondary" href="../evento/" target="_blank" rel="noopener">Abrir telão</a>
         </div>
       </section>
@@ -59,12 +61,12 @@
             </table>
           </div>
           <details class="box" id="import-box">
-            <summary>Importar desafios</summary>
+            <summary>Atualizar desafios a partir da pasta (opcional)</summary>
             <p class="hint">
               Escolha a pasta <code>desafios/halloween</code>. O painel lê de cada
               <code>rodada-N-nome/assets/</code> só o <code>instructions.html</code> e o
               <code>page.png</code>. O gabarito (<code>referencia.html</code>) não é enviado.
-              Reimportar atualiza as rodadas existentes.
+              As rodadas já vêm prontas pelo SQL (veja <code>SUPABASE.md</code>); use isto só se mudar uma referência ou instrução.
             </p>
             <input type="file" id="import-input" webkitdirectory multiple>
           </details>

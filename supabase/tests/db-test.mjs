@@ -169,6 +169,22 @@ await t("limite de 50 entregas por máquina", async () => {
   await entregar("rodada-1-a", DEV2, "Bia", "x");
 });
 
+await t("reiniciar no meio da rodada: estado mostra a rodada como pronta; dá para iniciar de novo", async () => {
+  assert.equal((await estado()).status, "valendo");
+  const r = (await ctl("rodada-1-a", "reiniciar")).rows[0];
+  assert.equal(r.status, "pronta");
+  const e = await estado();
+  assert.deepEqual([e.round, e.status, e.ends_at, e.duration_seconds], ["rodada-1-a", "pronta", null, 900]);
+  assert.equal((await org("select count(*)::int as n from public.submissions where round_id = 'rodada-1-a'")).rows[0].n, 0);
+  await rejects(entregar("rodada-1-a", DEV2, "Bia", "x"), /CITD_ROUND_CLOSED/);
+  await rejects(anon("select public.materiais_rodada('rodada-1-a')"), /CITD_NOT_STARTED/);
+  await ctl("rodada-1-a", "iniciar");
+  assert.equal((await estado()).status, "valendo");
+  await ctl("rodada-1-a", "pausar");
+  await ctl("rodada-1-a", "reiniciar");
+  assert.equal((await estado()).status, "pronta", "também a partir da pausa");
+});
+
 await t("organizador ajusta duração e título; não altera status direto", async () => {
   await org("update public.rounds set duration_seconds = 600, title = 'Novo' where id = 'rodada-2-b'");
   await rejects(org("update public.rounds set status = 'valendo' where id = 'rodada-2-b'"), /permission denied/);
