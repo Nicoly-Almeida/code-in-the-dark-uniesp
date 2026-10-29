@@ -1,0 +1,8 @@
+# Configuração mínima do Supabase CLI para este repositório.
+# Valores omitidos usam os padrões do CLI.
+project_id = "code-in-the-dark-uniesp"
+
+[functions.submit]
+# O editor é público e não tem login: a função se protege com o token de
+# participação, a validação de origem (CORS) e a RLS do banco.
+verify_jwt = false
