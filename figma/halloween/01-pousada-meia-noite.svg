@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000">
+  <style>
+    text[font-family*="Georgia"] { font-family: "Chiller", Georgia, serif !important; }
+    text[font-family*="Arial"] { font-family: "Special Elite", "Courier New", monospace !important; }
+    [fill="#f3eddf"], [fill="#fff8e9"] { fill: #fff1d6 !important; }
+    [fill="#193b35"] { fill: #28123d !important; }
+    [fill="#e35c35"] { fill: #f36b25 !important; }
+    [fill="#f1bd57"] { fill: #c7f441 !important; }
+    [fill="#31564c"] { fill: #66418a !important; }
+    [fill="#734f3e"] { fill: #6f2859 !important; }
+    [fill="#5a743f"], [fill="#a2aa72"] { fill: #7560a8 !important; }
+    [fill="#d5deca"] { fill: #e2d6f1 !important; }
+    [fill="#b9c3aa"] { fill: #d1c5e0 !important; }
+    [fill="#e4cda5"], [fill="#e6d8bc"] { fill: #ead7ba !important; }
+    [fill="#6b6d5f"] { fill: #67586a !important; }
+  </style>
+  <rect width="1440" height="1000" fill="#f3eddf"/>
+  <rect x="0" y="0" width="1440" height="14" fill="#e35c35"/>
+  <text x="92" y="76" fill="#193b35" font-family="Georgia, serif" font-size="29" font-weight="bold">POUSADA</text>
+  <text x="92" y="101" fill="#193b35" font-family="Arial, sans-serif" font-size="10" letter-spacing="3">MEIA-NOITE</text>
+  <text x="760" y="82" fill="#193b35" font-family="Arial, sans-serif" font-size="14">A pousada</text>
+  <text x="890" y="82" fill="#193b35" font-family="Arial, sans-serif" font-size="14">Quartos</text>
+  <text x="1005" y="82" fill="#193b35" font-family="Arial, sans-serif" font-size="14">Histórias</text>
+  <rect x="1160" y="48" width="188" height="52" rx="2" fill="#193b35"/>
+  <text x="1187" y="80" fill="#f3eddf" font-family="Arial, sans-serif" font-size="13" font-weight="bold" letter-spacing="1">RESERVAR QUARTO</text>
+
+  <rect x="72" y="136" width="1296" height="552" rx="3" fill="#193b35"/>
+  <circle cx="1101" cy="311" r="105" fill="#f1bd57"/>
+  <circle cx="1069" cy="286" r="10" fill="#193b35"/>
+  <circle cx="1133" cy="286" r="10" fill="#193b35"/>
+  <path d="M1072 333 Q1101 358 1130 333 Q1125 369 1101 369 Q1077 369 1072 333Z" fill="#e35c35"/>
+  <path d="M1092 205 Q1084 182 1098 168 Q1100 188 1112 197 Q1106 178 1122 167 Q1128 193 1113 211Z" fill="#5a743f"/>
+  <path d="M756 580 L756 420 L895 309 L1034 420 L1034 580Z" fill="#e4cda5"/>
+  <path d="M729 426 L895 285 L1061 426 L1045 445 L895 318 L745 445Z" fill="#e35c35"/>
+  <rect x="785" y="432" width="69" height="74" fill="#31564c"/>
+  <rect x="936" y="432" width="69" height="74" fill="#31564c"/>
+  <rect x="864" y="467" width="62" height="113" fill="#734f3e"/>
+  <circle cx="909" cy="525" r="4" fill="#f1bd57"/>
+  <rect x="680" y="574" width="440" height="12" fill="#a2aa72"/>
+  <path d="M696 576 Q680 520 702 485 Q724 525 718 576 M1088 577 Q1072 511 1097 474 Q1117 529 1110 577" fill="#5a743f"/>
+  <path d="M704 687 L704 615 Q704 590 729 590 Q754 590 754 615 L754 687Z" fill="#5a743f"/>
+  <path d="M1046 687 L1046 615 Q1046 590 1071 590 Q1096 590 1096 615 L1096 687Z" fill="#5a743f"/>
+  <text x="126" y="250" fill="#f1bd57" font-family="Arial, sans-serif" font-size="13" font-weight="bold" letter-spacing="3">HOSPEDAGEM PARA QUEM NÃO TEM MEDO</text>
+  <text x="122" y="337" fill="#f3eddf" font-family="Georgia, serif" font-size="70">Uma noite</text>
+  <text x="122" y="412" fill="#f3eddf" font-family="Georgia, serif" font-size="70" font-style="italic">fora do normal.</text>
+  <text x="126" y="465" fill="#d5deca" font-family="Arial, sans-serif" font-size="17">Lençóis frescos, rangidos antigos e café passado</text>
+  <text x="126" y="492" fill="#d5deca" font-family="Arial, sans-serif" font-size="17">antes do primeiro uivo. Você vem?</text>
+  <rect x="126" y="533" width="191" height="55" rx="2" fill="#e35c35"/>
+  <text x="158" y="568" fill="#fff8e9" font-family="Arial, sans-serif" font-size="14" font-weight="bold" letter-spacing="1">VER QUARTOS</text>
+  <text x="326" y="568" fill="#f3eddf" font-family="Arial, sans-serif" font-size="23">↗</text>
+  <text x="126" y="643" fill="#b9c3aa" font-family="Arial, sans-serif" font-size="12" letter-spacing="1">SERRA DA LUA · DESDE 1897</text>
+
+  <text x="96" y="754" fill="#e35c35" font-family="Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="3">DESCANSE, SE CONSEGUIR</text>
+  <text x="92" y="805" fill="#193b35" font-family="Georgia, serif" font-size="39">Escolha seu esconderijo</text>
+  <text x="1192" y="797" fill="#193b35" font-family="Arial, sans-serif" font-size="13">3 quartos especiais  ↗</text>
+  <line x1="94" y1="828" x2="1346" y2="828" stroke="#c8c0ad" stroke-width="1"/>
+  <rect x="96" y="858" width="386" height="83" fill="#e6d8bc"/>
+  <circle cx="145" cy="900" r="24" fill="#e35c35"/>
+  <path d="M134 902 Q145 887 156 902 Q151 918 145 918 Q139 918 134 902Z" fill="#f3eddf"/>
+  <text x="190" y="893" fill="#193b35" font-family="Georgia, serif" font-size="19">Quarto da Lua</text>
+  <text x="190" y="920" fill="#6b6d5f" font-family="Arial, sans-serif" font-size="12">Vista para o bosque. Sem espelhos.</text>
+  <text x="1270" y="906" fill="#193b35" font-family="Arial, sans-serif" font-size="23">↗</text>
+</svg>

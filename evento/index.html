@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f0e9">
+  <title>Cronômetro | Code in the Dark UNIESP</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f2f0e9;
+      --ink: #171916;
+      --muted: #65685f;
+      --line: #c9c8bd;
+      --signal: #e94d35;
+      --ready: #c9ed56;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background-color: var(--paper);
+      background-image: linear-gradient(rgba(23, 25, 22, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(23, 25, 22, .035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Arial", sans-serif;
+    }
+
+    main {
+      width: min(100% - 40px, 920px);
+      padding: 28px 0 36px;
+      text-align: center;
+    }
+
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .event-name { color: var(--ink); }
+
+    .round-label {
+      margin: 56px 0 8px;
+      color: var(--signal);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.15;
+    }
+
+    .clock {
+      margin: 20px 0 4px;
+      font-family: "Courier New", monospace;
+      font-size: 176px;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-height: 28px;
+      margin: 10px 0 30px;
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      min-height: 50px;
+      padding: 0 20px;
+      border: 1px solid var(--ink);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
+    button:hover { background: rgba(23, 25, 22, .07); }
+    button.primary { background: var(--ready); }
+    button.primary:hover { background: #b7dc3e; }
+
+    .hint {
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    body.running .round-label { color: var(--ink); }
+    body.finished { background-color: #fbe1dc; }
+    body.finished .round-label, body.finished .status { color: var(--signal); }
+
+    @media (max-width: 600px) {
+      main { width: min(100% - 28px, 920px); }
+      .masthead { font-size: 11px; }
+      .round-label { margin-top: 42px; font-size: 13px; }
+      h1 { font-size: 26px; }
+      .clock { margin-top: 26px; font-size: 88px; }
+      .status { font-size: 14px; }
+      button { flex: 1 1 40%; padding: 0 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <span class="event-name">Code in the Dark</span>
+      <span>UNIESP</span>
+    </header>
+    <p class="round-label">Rodada em andamento</p>
+    <h1>Valendo em</h1>
+    <div class="clock" id="clock" role="timer" aria-label="15 minutos restantes">15:00</div>
+    <p class="status" id="status" aria-live="polite">Pronto para começar</p>
+    <div class="controls" aria-label="Controles do cronômetro">
+      <button class="primary" id="toggle" type="button">Iniciar rodada</button>
+      <button id="reset" type="button">Reiniciar</button>
+      <button id="fullscreen" type="button">Tela cheia</button>
+    </div>
+    <p class="hint">Espaco: iniciar/pausar &nbsp;|&nbsp; R: reiniciar &nbsp;|&nbsp; F: tela cheia</p>
+  </main>
+  <script>
+    (function () {
+      var duration = 15 * 60;
+      var remaining = duration;
+      var deadline = null;
+      var interval = null;
+      var clock = document.getElementById("clock");
+      var status = document.getElementById("status");
+      var toggle = document.getElementById("toggle");
+      var reset = document.getElementById("reset");
+      var fullscreen = document.getElementById("fullscreen");
+
+      function render() {
+        var minutes = Math.floor(remaining / 60);
+        var seconds = remaining % 60;
+        var display = String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+        clock.textContent = display;
+        clock.setAttribute("aria-label", display + " restantes");
+      }
+
+      function stop() {
+        window.clearInterval(interval);
+        interval = null;
+        deadline = null;
+      }
+
+      function finish() {
+        remaining = 0;
+        stop();
+        document.body.classList.remove("running");
+        document.body.classList.add("finished");
+        status.textContent = "Tempo esgotado: parem de digitar";
+        toggle.textContent = "Rodada encerrada";
+        toggle.disabled = true;
+        render();
+      }
+
+      function tick() {
+        remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        render();
+        if (remaining === 0) finish();
+      }
+
+      function startOrPause() {
+        if (interval) {
+          remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+          stop();
+          document.body.classList.remove("running");
+          status.textContent = "Rodada pausada";
+          toggle.textContent = "Retomar rodada";
+          render();
+          return;
+        }
+        if (remaining === 0) return;
+        deadline = Date.now() + remaining * 1000;
+        interval = window.setInterval(tick, 200);
+        document.body.classList.add("running");
+        status.textContent = "Competidores, podem começar";
+        toggle.textContent = "Pausar rodada";
+      }
+
+      function resetClock() {
+        stop();
+        remaining = duration;
+        document.body.classList.remove("running", "finished");
+        status.textContent = "Pronto para começar";
+        toggle.disabled = false;
+        toggle.textContent = "Iniciar rodada";
+        render();
+      }
+
+      toggle.addEventListener("click", startOrPause);
+      reset.addEventListener("click", resetClock);
+      fullscreen.addEventListener("click", function () {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      });
+      document.addEventListener("keydown", function (event) {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        if (event.code === "Space" && event.target.tagName !== "BUTTON") {
+          event.preventDefault();
+          startOrPause();
+        }
+        if (event.key.toLowerCase() === "r") resetClock();
+        if (event.key.toLowerCase() === "f") fullscreen.click();
+      });
+      document.addEventListener("fullscreenchange", function () {
+        fullscreen.textContent = document.fullscreenElement ? "Sair da tela cheia" : "Tela cheia";
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>

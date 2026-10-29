@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000">
+  <style>
+    text[font-family*="Georgia"] { font-family: "Chiller", Georgia, serif !important; }
+    text[font-size="107"] { font-family: "Chiller", Georgia, serif !important; }
+    text[font-family*="Arial"]:not([font-size="107"]) { font-family: "Special Elite", "Courier New", monospace !important; }
+    [fill="#d2ee62"] { fill: #c7f441 !important; }
+    [fill="#f08b47"] { fill: #ff6a1a !important; }
+    [fill="#243a32"] { fill: #351441 !important; }
+    [fill="#f2ead8"] { fill: #fff0d6 !important; }
+    [fill="#c7c9bd"] { fill: #c8bfd1 !important; }
+    [stroke="#4b5148"] { stroke: #59455f !important; }
+  </style>
+  <rect width="1440" height="1000" fill="#171b19"/>
+  <path d="M0 0 H1440 V20 H0Z" fill="#d2ee62"/>
+  <circle cx="1358" cy="70" r="5" fill="#f08b47"/><circle cx="1380" cy="70" r="5" fill="#d2ee62"/><circle cx="1402" cy="70" r="5" fill="#f08b47"/>
+  <text x="82" y="80" fill="#d2ee62" font-family="Arial, sans-serif" font-size="13" font-weight="bold" letter-spacing="3">CONVITE OFICIAL · 31 OUT · 22H</text>
+  <text x="82" y="130" fill="#f2ead8" font-family="Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="2">CLUBE DA LUA CHEIA</text>
+  <text x="1000" y="91" fill="#f2ead8" font-family="Arial, sans-serif" font-size="13">A festa</text>
+  <text x="1085" y="91" fill="#f2ead8" font-family="Arial, sans-serif" font-size="13">Trajes</text>
+  <text x="1161" y="91" fill="#f2ead8" font-family="Arial, sans-serif" font-size="13">Como chegar</text>
+  <line x1="82" y1="160" x2="1358" y2="160" stroke="#4b5148" stroke-width="1"/>
+
+  <text x="78" y="284" fill="#f2ead8" font-family="Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="4">VOCÊ FOI CONVOCADO</text>
+  <text x="66" y="400" fill="#d2ee62" font-family="Arial, sans-serif" font-size="107" font-weight="900" letter-spacing="-2">BAILE DAS</text>
+  <text x="66" y="515" fill="#f2ead8" font-family="Arial, sans-serif" font-size="107" font-weight="900" letter-spacing="-2">CRIATURAS</text>
+  <path d="M72 548 L816 548" stroke="#f08b47" stroke-width="8"/>
+  <text x="82" y="609" fill="#c7c9bd" font-family="Arial, sans-serif" font-size="17">Uma noite sem humanos. Vista seu melhor disfarce e venha</text>
+  <text x="82" y="638" fill="#c7c9bd" font-family="Arial, sans-serif" font-size="17">dançar até o sol pedir licença.</text>
+  <rect x="82" y="692" width="204" height="60" rx="3" fill="#d2ee62"/>
+  <text x="111" y="729" fill="#171b19" font-family="Arial, sans-serif" font-size="14" font-weight="bold" letter-spacing="1">GARANTIR MEU INGRESSO</text>
+  <rect x="304" y="692" width="154" height="60" rx="3" fill="none" stroke="#f2ead8" stroke-width="1.5"/>
+  <text x="331" y="729" fill="#f2ead8" font-family="Arial, sans-serif" font-size="14" font-weight="bold">VER DETALHES</text>
+  <text x="82" y="814" fill="#f08b47" font-family="Arial, sans-serif" font-size="13" font-weight="bold" letter-spacing="2">INGRESSOS LIMITADOS · NÃO ACEITAMOS ABÓBORAS SEM CONVITE</text>
+
+  <rect x="927" y="215" width="420" height="592" fill="#243a32"/>
+  <circle cx="1137" cy="434" r="157" fill="#d2ee62"/>
+  <path d="M1027 386 Q1048 285 1123 301 Q1177 265 1220 325 Q1288 347 1261 433 Q1284 482 1241 528 L1032 528 Q985 479 1027 386Z" fill="#171b19"/>
+  <path d="M1036 417 Q1083 373 1122 415 Q1160 372 1200 416 Q1234 398 1251 431 L1242 479 Q1206 510 1168 480 Q1129 512 1088 480 Q1054 502 1022 474Z" fill="#f08b47"/>
+  <path d="M1090 424 L1109 437 L1092 447Z" fill="#171b19"/>
+  <path d="M1167 424 L1186 437 L1169 447Z" fill="#171b19"/>
+  <path d="M1110 469 L1122 451 L1135 469 L1148 451 L1160 469" fill="none" stroke="#171b19" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M1065 313 Q1045 255 1097 247 Q1090 286 1121 299 M1192 297 Q1222 248 1264 276 Q1224 296 1220 334" fill="#f08b47"/>
+  <circle cx="1062" cy="553" r="15" fill="#f2ead8"/><circle cx="1215" cy="553" r="15" fill="#f2ead8"/>
+  <path d="M1080 561 Q1137 592 1197 561 L1210 807 L1067 807Z" fill="#171b19"/>
+  <path d="M1096 582 L1137 621 L1180 582 L1196 807 L1080 807Z" fill="#a52635"/>
+  <path d="M1100 624 L1137 652 L1175 624" fill="none" stroke="#f2ead8" stroke-width="5"/>
+  <rect x="949" y="774" width="374" height="72" fill="#f08b47"/>
+  <text x="978" y="807" fill="#171b19" font-family="Arial, sans-serif" font-size="13" font-weight="bold" letter-spacing="1">TRAJE OBRIGATÓRIO</text>
+  <text x="978" y="830" fill="#171b19" font-family="Arial, sans-serif" font-size="13">Criatividade conta. Lençol também.</text>
+
+  <line x1="82" y1="878" x2="1358" y2="878" stroke="#4b5148" stroke-width="1"/>
+  <text x="82" y="925" fill="#d2ee62" font-family="Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="2">31 OUTUBRO</text>
+  <text x="82" y="954" fill="#f2ead8" font-family="Georgia, serif" font-size="22">A partir das 22h</text>
+  <line x1="410" y1="903" x2="410" y2="962" stroke="#4b5148"/>
+  <text x="458" y="925" fill="#d2ee62" font-family="Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="2">LOCAL SECRETO</text>
+  <text x="458" y="954" fill="#f2ead8" font-family="Georgia, serif" font-size="22">Endereço após confirmar presença</text>
+  <text x="1167" y="947" fill="#c7c9bd" font-family="Arial, sans-serif" font-size="12">Sem convidados humanos.</text>
+</svg>

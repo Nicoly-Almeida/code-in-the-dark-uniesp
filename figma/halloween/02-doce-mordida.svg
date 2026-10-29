@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000">
+  <style>
+    text[font-family*="Georgia"] { font-family: "Chiller", Georgia, serif !important; }
+    text[font-family*="Arial"] { font-family: "Special Elite", "Courier New", monospace !important; }
+    [fill="#fff3e7"] { fill: #fff0d6 !important; }
+    [fill="#a52635"] { fill: #552047 !important; }
+    [fill="#f3d9d4"], [fill="#e9b9ae"] { fill: #f1c5b7 !important; }
+    [fill="#f2a04b"] { fill: #f47521 !important; }
+    [fill="#687847"], [fill="#dce4c2"] { fill: #a9d943 !important; }
+    [fill="#34392f"] { fill: #25152e !important; }
+    [fill="#5c6251"] { fill: #67586a !important; }
+    [fill="#e9e9d4"] { fill: #e6e9c6 !important; }
+    [fill="#f1d8be"] { fill: #f4d0a6 !important; }
+  </style>
+  <rect width="1440" height="1000" fill="#fff3e7"/>
+  <rect x="0" y="0" width="1440" height="42" fill="#a52635"/>
+  <text x="439" y="27" fill="#fff3e7" font-family="Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="2">DOCES ASSUSTADORES, FEITOS COM CARINHO · PEDIDOS ATÉ 31/10</text>
+  <text x="92" y="111" fill="#a52635" font-family="Georgia, serif" font-size="34" font-weight="bold">doce mordida</text>
+  <text x="92" y="136" fill="#5c6251" font-family="Arial, sans-serif" font-size="10" letter-spacing="3">CONFEITARIA DE OUTRO MUNDO</text>
+  <text x="788" y="104" fill="#34392f" font-family="Arial, sans-serif" font-size="14">Cardápio</text>
+  <text x="890" y="104" fill="#34392f" font-family="Arial, sans-serif" font-size="14">Nossa cozinha</text>
+  <text x="1055" y="104" fill="#34392f" font-family="Arial, sans-serif" font-size="14">Entrega</text>
+  <rect x="1178" y="73" width="170" height="52" rx="26" fill="#a52635"/>
+  <text x="1210" y="105" fill="#fff3e7" font-family="Arial, sans-serif" font-size="13" font-weight="bold">FAZER PEDIDO</text>
+  <circle cx="1326" cy="84" r="11" fill="#d5e66b"/>
+  <text x="1322" y="89" fill="#34392f" font-family="Arial, sans-serif" font-size="12" font-weight="bold">2</text>
+
+  <rect x="72" y="168" width="1296" height="458" rx="8" fill="#f3d9d4"/>
+  <circle cx="1010" cy="388" r="172" fill="#e9b9ae"/>
+  <path d="M820 463 C820 425 857 414 879 433 C888 392 944 384 966 423 C997 389 1052 401 1056 441 C1092 420 1132 443 1127 480 L1127 502 L820 502Z" fill="#fff3e7"/>
+  <path d="M826 467 L1122 467 L1103 545 Q1080 578 1040 578 L904 578 Q865 578 846 545Z" fill="#a52635"/>
+  <path d="M851 490 Q887 508 922 490 Q956 472 991 491 Q1026 510 1061 490 Q1093 473 1114 492 L1107 529 Q1082 551 1043 551 L905 551 Q872 551 859 529Z" fill="#f2a04b"/>
+  <path d="M962 411 Q950 386 968 370 Q971 392 984 397 Q981 378 1000 366 Q1008 391 992 414Z" fill="#687847"/>
+  <circle cx="934" cy="473" r="7" fill="#34392f"/>
+  <circle cx="1014" cy="473" r="7" fill="#34392f"/>
+  <path d="M949 492 Q974 513 999 492" fill="none" stroke="#34392f" stroke-width="6" stroke-linecap="round"/>
+  <path d="M1148 304 C1161 278 1192 284 1196 311 C1221 283 1256 304 1246 337 C1236 364 1195 388 1195 388 C1195 388 1154 360 1145 334Z" fill="#a52635"/>
+  <path d="M1189 290 Q1182 274 1198 261 Q1199 278 1210 281" fill="none" stroke="#687847" stroke-width="7" stroke-linecap="round"/>
+  <path d="M1223 445 Q1233 430 1244 445 L1244 477 Q1244 489 1233 489 Q1222 489 1222 477Z" fill="#fff3e7" stroke="#a52635" stroke-width="3"/>
+  <circle cx="1229" cy="456" r="2.5" fill="#34392f"/><circle cx="1238" cy="456" r="2.5" fill="#34392f"/>
+  <text x="124" y="244" fill="#a52635" font-family="Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="3">EDIÇÃO DE HALLOWEEN</text>
+  <text x="118" y="316" fill="#34392f" font-family="Georgia, serif" font-size="61">Gostosuras</text>
+  <text x="118" y="382" fill="#a52635" font-family="Georgia, serif" font-size="61" font-style="italic">ou travessuras?</text>
+  <text x="124" y="429" fill="#5c6251" font-family="Arial, sans-serif" font-size="16">A gente trouxe os dois. Caixas feitas à mão,</text>
+  <text x="124" y="455" fill="#5c6251" font-family="Arial, sans-serif" font-size="16">recheios generosos e um sustinho de brinde.</text>
+  <rect x="124" y="492" width="190" height="54" rx="27" fill="#a52635"/>
+  <text x="157" y="525" fill="#fff3e7" font-family="Arial, sans-serif" font-size="13" font-weight="bold" letter-spacing="1">VER O CARDÁPIO</text>
+  <text x="124" y="587" fill="#5c6251" font-family="Arial, sans-serif" font-size="12">Feito hoje. Entregue antes da meia-noite.</text>
+
+  <text x="96" y="699" fill="#687847" font-family="Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="3">PEQUENOS SUSTOS, GRANDES DOCES</text>
+  <text x="92" y="751" fill="#34392f" font-family="Georgia, serif" font-size="36">O cardápio da noite</text>
+  <text x="1202" y="743" fill="#a52635" font-family="Arial, sans-serif" font-size="13" font-weight="bold">VER TUDO  ↗</text>
+  <rect x="96" y="779" width="396" height="168" rx="5" fill="#e9e9d4"/>
+  <circle cx="172" cy="862" r="48" fill="#f2a04b"/><path d="M160 816 Q157 796 174 790 Q177 808 188 812" fill="#687847"/>
+  <path d="M151 857 Q172 839 193 857 Q190 883 172 888 Q154 883 151 857Z" fill="#f3d9d4"/>
+  <circle cx="165" cy="859" r="3" fill="#34392f"/><circle cx="180" cy="859" r="3" fill="#34392f"/>
+  <text x="244" y="842" fill="#34392f" font-family="Georgia, serif" font-size="21">Abóbora dengosa</text>
+  <text x="244" y="871" fill="#5c6251" font-family="Arial, sans-serif" font-size="13">Chocolate, especiarias e caramelo</text>
+  <text x="244" y="914" fill="#a52635" font-family="Arial, sans-serif" font-size="17" font-weight="bold">R$ 18,00</text>
+  <rect x="524" y="779" width="396" height="168" rx="5" fill="#f1d8be"/>
+  <circle cx="600" cy="862" r="48" fill="#a52635"/><path d="M571 858 Q600 826 629 858 L623 880 Q600 900 577 880Z" fill="#fff3e7"/>
+  <circle cx="589" cy="860" r="3" fill="#34392f"/><circle cx="610" cy="860" r="3" fill="#34392f"/>
+  <text x="672" y="842" fill="#34392f" font-family="Georgia, serif" font-size="21">Fantasma de framboesa</text>
+  <text x="672" y="871" fill="#5c6251" font-family="Arial, sans-serif" font-size="13">Merengue, fruta e baunilha</text>
+  <text x="672" y="914" fill="#a52635" font-family="Arial, sans-serif" font-size="17" font-weight="bold">R$ 14,00</text>
+  <rect x="952" y="779" width="396" height="168" rx="5" fill="#dce4c2"/>
+  <circle cx="1028" cy="862" r="48" fill="#fff3e7"/><path d="M1000 865 Q1028 832 1056 865 L1050 885 Q1028 900 1006 885Z" fill="#687847"/>
+  <circle cx="1018" cy="861" r="3" fill="#34392f"/><circle cx="1038" cy="861" r="3" fill="#34392f"/>
+  <text x="1100" y="842" fill="#34392f" font-family="Georgia, serif" font-size="21">Múmia de pistache</text>
+  <text x="1100" y="871" fill="#5c6251" font-family="Arial, sans-serif" font-size="13">Massa folhada e creme verde</text>
+  <text x="1100" y="914" fill="#a52635" font-family="Arial, sans-serif" font-size="17" font-weight="bold">R$ 16,00</text>
+</svg>
