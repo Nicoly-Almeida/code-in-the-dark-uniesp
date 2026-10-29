@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="200" viewBox="0 0 160 200">
+  <defs><clipPath id="vidro"><circle cx="80" cy="136" r="50"/></clipPath></defs>
+  <circle cx="72" cy="96" r="4" fill="#8e5bd1"/>
+  <circle cx="88" cy="82" r="3" fill="#8e5bd1"/>
+  <path d="M66 34 H94 V84 A54 54 0 1 1 66 84Z" fill="#fffaf2" stroke="#1f1b2e" stroke-width="4" stroke-linejoin="round"/>
+  <path clip-path="url(#vidro)" d="M20 118 Q40 108 60 118 T100 118 T140 118 V200 H20Z" fill="#8e5bd1"/>
+  <path d="M60 148 L62 154 L68 156 L62 158 L60 164 L58 158 L52 156 L58 154Z M100 132 L102 137 L107 139 L102 141 L100 146 L98 141 L93 139 L98 137Z" fill="#fffaf2"/>
+  <path d="M46 130 Q44 150 54 166" stroke="#fffaf2" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>
+  <rect x="68" y="14" width="24" height="22" rx="4" fill="#8a5a3c" stroke="#1f1b2e" stroke-width="4"/>
+</svg>

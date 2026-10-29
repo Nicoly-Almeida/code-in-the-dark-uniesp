@@ -1,8 +1,11 @@
 // Painel da organização — Code in the Dark UNIESP.
-// Regra de ouro: o código enviado é NÃO CONFIÁVEL. Ele só entra no DOM via
+// Regra de ouro: o código entregue é NÃO CONFIÁVEL. Ele só entra no DOM via
 // textContent ou dentro de <iframe sandbox="" srcdoc>. Nunca via innerHTML.
 (function () {
   "use strict";
+
+  var POLL_MS = 2000;
+  var SUBMISSIONS_POLL_MS = 5000;
 
   var cfg = window.CITD_CONFIG || {};
   var $ = function (sel) { return document.querySelector(sel); };
@@ -13,8 +16,7 @@
     notice.className = "notice" + (kind ? " " + kind : "");
   }
 
-  if (!window.supabase || !cfg.supabaseUrl || !cfg.supabasePublishableKey ||
-      /COLE_AQUI/.test(cfg.supabasePublishableKey)) {
+  if (!window.supabase || !cfg.supabaseUrl || !cfg.supabasePublishableKey) {
     say("Configure supabaseUrl e supabasePublishableKey em citd-config.js.", "error");
     return;
   }
@@ -23,17 +25,26 @@
     auth: { persistSession: true, autoRefreshToken: true, storageKey: "citd-admin-auth" },
   });
 
-  var state = { rounds: [], roundId: null, participants: [], submissions: [], current: null };
+  function emptyState() {
+    return {
+      rounds: [], roundId: null, submissions: [], current: null,
+      live: null, offsetMs: 0, stage: null, references: {}, timers: [],
+    };
+  }
+  var state = emptyState();
 
   var ERRORS = {
     CITD_FORBIDDEN: "Sua conta não tem acesso de organizador.",
     CITD_UNKNOWN_ROUND: "Rodada não encontrada.",
-    CITD_INVALID_NAME: "Nome inválido (1 a 80 caracteres).",
+    CITD_INVALID_STATE: "Essa ação não vale no estado atual da rodada. Atualize a página.",
+    CITD_OTHER_ROUND_ACTIVE: "Encerre a rodada em andamento antes de iniciar outra.",
+    CITD_NO_MATERIALS: "Esta rodada não tem referência e instruções. Use Importar desafios.",
+    CITD_INVALID_ACTION: "Ação inválida.",
   };
   function errText(error) {
     if (!error) return "";
     if (ERRORS[error.message]) return ERRORS[error.message];
-    if (error.code === "23505") return "Já existe um registro com esse identificador.";
+    if (error.code === "23514") return "Valor fora do permitido.";
     if (error.code === "42501") return "Sem permissão para esta ação.";
     return error.message || "Erro inesperado.";
   }
@@ -43,6 +54,7 @@
     if (props) Object.keys(props).forEach(function (k) {
       if (k === "text") node.textContent = props[k];
       else if (k === "className") node.className = props[k];
+      else if (k === "disabled") node.disabled = !!props[k];
       else if (k.slice(0, 2) === "on") node.addEventListener(k.slice(2), props[k]);
       else node.setAttribute(k, props[k]);
     });
@@ -54,9 +66,12 @@
   function field(form, name) { return form.elements.namedItem(name); }
 
   function fmtTime(iso) {
-    return iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" }) : "";
+    return iso ? new Date(iso).toLocaleTimeString("pt-BR") : "";
   }
   function fmtBytes(n) { return n < 1024 ? n + " B" : (n / 1024).toFixed(1) + " KB"; }
+  function fmtClock(secs) {
+    return String(Math.floor(secs / 60)).padStart(2, "0") + ":" + String(secs % 60).padStart(2, "0");
+  }
 
   function fillTable(table, rows, emptyText, cols) {
     var body = table.querySelector("tbody");
@@ -68,6 +83,23 @@
     rows.forEach(function (r) { body.appendChild(r); });
   }
 
+  var STATUS = {
+    pronta: ["Pronta", "closed"],
+    valendo: ["Valendo", "open"],
+    pausada: ["Pausada", "paused"],
+    encerrada: ["Encerrada", "closed"],
+  };
+  function badge(status) {
+    var s = STATUS[status] || [status, "closed"];
+    return el("span", { className: "badge " + s[1], text: s[0] });
+  }
+
+  // "valendo" com o fim no passado (relógio do servidor) já está encerrada.
+  function liveStatus(r) {
+    if (r && r.status === "valendo" && Date.now() + state.offsetMs >= Date.parse(r.ends_at)) return "encerrada";
+    return r ? r.status : null;
+  }
+
   // ---------------------------------------------------------------- sessão
   async function refreshSession() {
     var res = await db.auth.getSession();
@@ -75,6 +107,7 @@
     $(".session").hidden = !session;
     $("#login-section").hidden = !!session;
     $("#app").hidden = true;
+    stopTimers();
     if (!session) return;
     $(".session-email").textContent = session.user.email || "";
 
@@ -86,6 +119,17 @@
     say("");
     $("#app").hidden = false;
     await loadRounds();
+    await pollLive();
+    state.timers.push(setInterval(pollLive, POLL_MS));
+    state.timers.push(setInterval(renderLive, 250));
+    state.timers.push(setInterval(function () {
+      if (state.roundId) loadSubmissions();
+    }, SUBMISSIONS_POLL_MS));
+  }
+
+  function stopTimers() {
+    state.timers.forEach(clearInterval);
+    state.timers = [];
   }
 
   $("#login-form").addEventListener("submit", async function (e) {
@@ -103,190 +147,298 @@
 
   $("#logout").addEventListener("click", async function () {
     await db.auth.signOut();
-    state = { rounds: [], roundId: null, participants: [], submissions: [], current: null };
+    stopTimers();
     closeViewer();
+    state = emptyState();
     say("Sessão encerrada.");
     await refreshSession();
+  });
+
+  // ------------------------------------------------- rodada ao vivo (topo)
+  async function pollLive() {
+    var sentAt = Date.now();
+    var res = await db.rpc("estado_atual");
+    if (res.error) return;
+    var live = res.data;
+    if (live && live.server_now) state.offsetMs = Date.parse(live.server_now) - (sentAt + Date.now()) / 2;
+    var changed = JSON.stringify(live && [live.round, live.status, live.ends_at, live.remaining_seconds]) !==
+      JSON.stringify(state.live && [state.live.round, state.live.status, state.live.ends_at, state.live.remaining_seconds]);
+    state.live = live;
+    renderLive();
+    if (changed) await loadRounds();
+  }
+
+  function renderLive() {
+    var live = state.live;
+    var status = liveStatus(live);
+    var secs = 0;
+    if (status === "valendo") secs = Math.max(0, Math.ceil((Date.parse(live.ends_at) - Date.now() - state.offsetMs) / 1000));
+    if (status === "pausada") secs = live.remaining_seconds;
+
+    var b = $("#live-status");
+    var s = STATUS[status] || ["Aguardando", "closed"];
+    b.textContent = s[0];
+    b.className = "badge " + s[1];
+    $("#live-title").textContent = live ? live.title : "Nenhuma rodada iniciada";
+    $("#live-clock").textContent = live ? fmtClock(secs) : "--:--";
+    $("#live").classList.toggle("urgent", status === "valendo" && secs <= 60);
+
+    var active = status === "valendo" || status === "pausada";
+    $("#live-pause").hidden = !active;
+    $("#live-pause").textContent = status === "pausada" ? "Retomar" : "Pausar";
+    $("#live-end").hidden = !active;
+  }
+
+  async function control(roundId, acao, button) {
+    if (button) button.disabled = true;
+    var res = await db.rpc("admin_controlar_rodada", { p_round: roundId, p_acao: acao });
+    if (button) button.disabled = false;
+    if (res.error) {
+      say(errText(res.error), "error");
+    } else {
+      say({
+        iniciar: "Rodada iniciada: a referência foi liberada para os participantes.",
+        pausar: "Rodada pausada: os editores estão travados.",
+        retomar: "Rodada retomada.",
+        encerrar: "Rodada encerrada: os editores entregaram e travaram.",
+        reiniciar: "Rodada reiniciada: voltou para pronta e as entregas foram apagadas.",
+      }[acao], "success");
+    }
+    await pollLive();
+    await loadRounds();
+    if (acao === "iniciar" && !res.error) await selectRound(roundId);
+  }
+
+  $("#live-pause").addEventListener("click", function () {
+    var live = state.live;
+    if (!live) return;
+    control(live.round, liveStatus(live) === "pausada" ? "retomar" : "pausar", this);
+  });
+  $("#live-end").addEventListener("click", function () {
+    var live = state.live;
+    if (!live) return;
+    if (!window.confirm("Encerrar a rodada agora? Os editores entregam o código e travam.")) return;
+    control(live.round, "encerrar", this);
   });
 
   // ---------------------------------------------------------------- rodadas
   async function loadRounds() {
     var res = await db.from("rounds")
-      .select("id, title, is_open, max_code_bytes, opened_at, closed_at, created_at")
-      .order("created_at", { ascending: true });
+      .select("id, title, position, status, duration_seconds, started_at, ends_at, remaining_seconds")
+      .order("position", { ascending: true })
+      .order("id", { ascending: true });
     if (res.error) return say(errText(res.error), "error");
     state.rounds = res.data;
     renderRounds();
-    if (state.roundId && state.rounds.some(function (r) { return r.id === state.roundId; })) {
-      await loadRound();
-    } else {
+    if (state.roundId && !currentRound()) {
       state.roundId = null;
       $("#round-detail").hidden = true;
+      closeViewer();
     }
   }
-
-  function renderRounds() {
-    fillTable($("#rounds-table"), state.rounds.map(function (r) {
-      return el("tr", { className: r.id === state.roundId ? "selected" : "" }, [
-        el("td", {}, [el("strong", { text: r.id }), el("br"), el("span", { text: r.title })]),
-        el("td", {}, [el("span", { className: "badge " + (r.is_open ? "open" : "closed"), text: r.is_open ? "Aberta" : "Fechada" })]),
-        el("td", { text: Math.round(r.max_code_bytes / 1000) + " KB" }),
-        el("td", { className: "actions" }, [
-          el("button", { type: "button", className: "secondary", text: "Abrir painel", onclick: function () { selectRound(r.id); } }),
-        ]),
-      ]);
-    }), "Nenhuma rodada criada.", 4);
-  }
-
-  async function selectRound(id) {
-    state.roundId = id;
-    closeViewer();
-    $("#new-token").hidden = true;
-    renderRounds();
-    await loadRound();
-  }
-
-  $("#round-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var f = e.currentTarget;
-    var id = field(f, "id").value.trim().toLowerCase();
-    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(id)) return say("Identificador: letras minúsculas, números e hífen.", "error");
-    var res = await db.from("rounds").insert({
-      id: id,
-      title: field(f, "title").value.trim(),
-      max_code_bytes: Math.max(1, Math.min(500, Number(field(f, "kb").value) || 100)) * 1000,
-    });
-    if (res.error) return say(errText(res.error), "error");
-    f.reset();
-    say("Rodada criada (fechada). Abra quando o cronômetro começar.", "success");
-    state.roundId = id;
-    await loadRounds();
-  });
-
-  $("#toggle-round").addEventListener("click", async function () {
-    var round = currentRound();
-    if (!round) return;
-    var open = !round.is_open;
-    if (!open && !window.confirm("Encerrar a rodada " + round.id + "? Novos envios serão recusados.")) return;
-    this.disabled = true;
-    var res = await db.rpc("admin_set_round_open", { p_round: round.id, p_open: open });
-    this.disabled = false;
-    if (res.error) return say(errText(res.error), "error");
-    say(open ? "Rodada aberta para envios." : "Rodada encerrada. Envios recusados a partir de agora.", "success");
-    await loadRounds();
-  });
-
-  $("#refresh").addEventListener("click", function () { loadRounds(); });
 
   function currentRound() {
     return state.rounds.find(function (r) { return r.id === state.roundId; });
   }
 
-  // ------------------------------------------------- participantes e envios
-  async function loadRound() {
-    var round = currentRound();
-    if (!round) return;
-    $("#round-detail").hidden = false;
-    $("#round-title").textContent = round.title + " (" + round.id + ")";
-    var badge = $("#round-status");
-    badge.textContent = round.is_open ? "Aberta" : "Fechada";
-    badge.className = "badge " + (round.is_open ? "open" : "closed");
-    $("#toggle-round").textContent = round.is_open ? "Encerrar rodada" : "Abrir rodada";
-    $("#toggle-round").className = round.is_open ? "danger" : "";
+  function renderRounds() {
+    var anyActive = state.rounds.some(function (r) {
+      var s = liveStatus(r);
+      return s === "valendo" || s === "pausada";
+    });
+    fillTable($("#rounds-table"), state.rounds.map(function (r) {
+      var status = liveStatus(r);
+      var minutes = el("input", {
+        type: "number", min: "1", max: "120", value: String(Math.round(r.duration_seconds / 60)),
+        "aria-label": "Minutos de " + r.title, className: "minutes", disabled: status !== "pronta",
+        onchange: function () { setDuration(r, this); },
+      });
+      var actions = [];
+      if (status === "pronta") {
+        actions.push(el("button", {
+          type: "button", text: "▶ Iniciar", disabled: anyActive,
+          title: anyActive ? "Encerre a rodada em andamento primeiro" : "",
+          onclick: function () {
+            if (window.confirm("Iniciar " + r.title + "? A referência é liberada e o tempo começa a contar para todos.")) {
+              control(r.id, "iniciar", this);
+            }
+          },
+        }));
+      }
+      if (status === "encerrada") {
+        actions.push(el("button", {
+          type: "button", className: "secondary", text: "Reiniciar",
+          onclick: function () {
+            if (window.confirm("Reiniciar " + r.title + "? Ela volta para pronta e TODAS as entregas dela são apagadas.")) {
+              control(r.id, "reiniciar", this);
+            }
+          },
+        }));
+      }
+      actions.push(el("button", {
+        type: "button", className: "secondary", text: "Entregas",
+        onclick: function () { selectRound(r.id); },
+      }));
+      return el("tr", { className: r.id === state.roundId ? "selected" : "" }, [
+        el("td", {}, [el("strong", { text: r.title }), el("br"), el("span", { className: "hint", text: r.id })]),
+        el("td", {}, [badge(status)]),
+        el("td", { className: "time" }, [minutes, el("span", { className: "hint", text: " min" })]),
+        el("td", { className: "actions" }, actions),
+      ]);
+    }), "Nenhuma rodada. Use Importar desafios.", 4);
+  }
 
-    var results = await Promise.all([
-      db.from("participants").select("id, display_name, created_at")
-        .eq("round_id", round.id).order("created_at", { ascending: true }),
-      db.from("submissions").select("id, participant_id, submitted_name, code_bytes, submitted_at")
-        .eq("round_id", round.id).order("submitted_at", { ascending: false }),
-    ]);
-    var err = results[0].error || results[1].error;
-    if (err) return say(errText(err), "error");
-    state.participants = results[0].data;
-    state.submissions = results[1].data;
-    renderParticipants();
+  async function setDuration(r, input) {
+    var minutes = Math.round(Number(input.value));
+    if (!(minutes >= 1 && minutes <= 120)) {
+      input.value = String(Math.round(r.duration_seconds / 60));
+      return say("A duração deve ser de 1 a 120 minutos.", "error");
+    }
+    var res = await db.from("rounds").update({ duration_seconds: minutes * 60 }).eq("id", r.id);
+    if (res.error) return say(errText(res.error), "error");
+    say("Duração de " + r.title + ": " + minutes + " min.", "success");
+    await loadRounds();
+  }
+
+  async function selectRound(id) {
+    state.roundId = id;
+    closeViewer();
+    renderRounds();
+    var round = currentRound();
+    $("#round-detail").hidden = false;
+    $("#round-title").textContent = round ? round.title : id;
+    state.submissions = [];
+    await loadSubmissions();
+  }
+
+  // --------------------------------------------------------- importação
+  // Lê de cada pasta rodada-N-nome/assets/ o instructions.html e o page.png.
+  // As cópias em pacotes/ (pendrive) e o referencia.html são ignorados.
+  var IMPORT_RE = /(?:^|\/)(rodada-(\d+)-[a-z0-9-]+)\/assets\/(instructions\.html|page\.png)$/;
+
+  function readFile(file, asDataUrl) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error); };
+      if (asDataUrl) reader.readAsDataURL(file); else reader.readAsText(file, "utf-8");
+    });
+  }
+
+  $("#import-input").addEventListener("change", async function () {
+    var input = this;
+    var found = {};
+    Array.prototype.forEach.call(input.files, function (file) {
+      var path = file.webkitRelativePath || file.name;
+      if (/(^|\/)pacotes\//.test(path)) return;
+      var m = IMPORT_RE.exec(path);
+      if (!m) return;
+      var r = found[m[1]] || (found[m[1]] = { id: m[1], position: Number(m[2]) });
+      if (m[3] === "page.png") r.png = file; else r.instructions = file;
+    });
+    var rounds = Object.keys(found).map(function (k) { return found[k]; })
+      .sort(function (a, b) { return a.position - b.position; });
+    input.value = "";
+    if (!rounds.length) {
+      return say("Nenhuma pasta rodada-N-nome/assets/ encontrada. Escolha a pasta desafios/halloween.", "error");
+    }
+    var done = [];
+    var failed = [];
+    for (var i = 0; i < rounds.length; i++) {
+      var r = rounds[i];
+      if (!r.png || !r.instructions) { failed.push(r.id + " (falta page.png ou instructions.html)"); continue; }
+      say("Importando " + r.id + "...");
+      try {
+        var html = await readFile(r.instructions, false);
+        var reference = await readFile(r.png, true);
+        var header = /===\s*([^=\n]+?)\s*===/.exec(html);
+        var res = await db.rpc("admin_importar_rodada", {
+          p_round: r.id,
+          p_title: header ? header[1] : r.id,
+          p_position: r.position,
+          p_instructions: html,
+          p_reference: reference,
+        });
+        if (res.error) failed.push(r.id + " (" + errText(res.error) + ")"); else done.push(r.id);
+      } catch (err) {
+        failed.push(r.id + " (" + (err && err.message || "erro ao ler") + ")");
+      }
+    }
+    say(done.length + " rodada(s) importada(s)" + (done.length ? ": " + done.join(", ") : "") +
+      (failed.length ? ". Falharam: " + failed.join("; ") : "."), failed.length ? "error" : "success");
+    $("#import-box").open = false;
+    await loadRounds();
+  });
+
+  // ------------------------------------------------------------- entregas
+  async function loadSubmissions() {
+    var roundId = state.roundId;
+    if (!roundId) return;
+    var res = await db.from("submissions")
+      .select("id, device_id, submitted_name, code_bytes, submitted_at")
+      .eq("round_id", roundId)
+      .order("submitted_at", { ascending: false });
+    if (roundId !== state.roundId) return;
+    if (res.error) return say(errText(res.error), "error");
+    state.submissions = res.data;
     renderSubmissions();
   }
 
-  function participantName(id) {
-    var p = state.participants.find(function (x) { return x.id === id; });
-    return p ? p.display_name : "(removido)";
+  function countsByDevice() {
+    var counts = {};
+    state.submissions.forEach(function (s) { counts[s.device_id] = (counts[s.device_id] || 0) + 1; });
+    return counts;
   }
 
-  function renderParticipants() {
-    fillTable($("#participants-table"), state.participants.map(function (p) {
-      var count = state.submissions.filter(function (s) { return s.participant_id === p.id; }).length;
-      return el("tr", {}, [
-        el("td", { text: p.display_name }),
-        el("td", { text: String(count) }),
-        el("td", { className: "actions" }, [
-          el("button", { type: "button", className: "secondary", text: "Remover", onclick: function () { removeParticipant(p); } }),
-        ]),
-      ]);
-    }), "Nenhum participante nesta rodada.", 3);
+  // Última entrega de cada máquina, em ordem alfabética de nome (para apresentar).
+  function latestPerDevice() {
+    var seen = {};
+    return state.submissions.filter(function (s) {
+      if (seen[s.device_id]) return false;
+      seen[s.device_id] = true;
+      return true;
+    }).sort(function (a, b) { return a.submitted_name.localeCompare(b.submitted_name, "pt-BR"); });
+  }
+
+  function visibleSubmissions() {
+    return $("#only-latest").checked ? latestPerDevice() : state.submissions;
   }
 
   function renderSubmissions() {
-    var rows = state.submissions;
-    if ($("#only-latest").checked) {
-      var seen = {};
-      rows = rows.filter(function (s) {
-        if (seen[s.participant_id]) return false;
-        seen[s.participant_id] = true;
-        return true;
-      });
-    }
-    fillTable($("#submissions-table"), rows.map(function (s) {
+    var counts = countsByDevice();
+    fillTable($("#submissions-table"), visibleSubmissions().map(function (s) {
       return el("tr", { className: state.current && state.current.id === s.id ? "selected" : "" }, [
         el("td", { text: fmtTime(s.submitted_at) }),
         el("td", { text: s.submitted_name }),
-        el("td", { text: participantName(s.participant_id) }),
+        el("td", { text: String(counts[s.device_id] || 1) }),
         el("td", { text: fmtBytes(s.code_bytes) }),
         el("td", { className: "actions" }, [
-          el("button", { type: "button", text: "Ver código", onclick: function () { openSubmission(s); } }),
+          el("button", { type: "button", className: "secondary", text: "Ver código", onclick: function () { openSubmission(s); } }),
+          el("button", { type: "button", text: "Tela cheia", onclick: function () { openStage(s.id); } }),
         ]),
       ]);
-    }), "Nenhum envio ainda.", 5);
+    }), "Nenhuma entrega ainda.", 5);
   }
   $("#only-latest").addEventListener("change", renderSubmissions);
 
-  $("#participant-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var f = e.currentTarget;
-    var name = field(f, "name").value.trim();
-    if (!name) return;
-    var res = await db.rpc("admin_create_participant", { p_round: state.roundId, p_name: name });
-    if (res.error) return say(errText(res.error), "error");
-    f.reset();
-    $("#new-token").hidden = false;
-    $("#new-token .token-name").textContent = name;
-    $("#new-token .token-value").textContent = res.data;
-    say("Token gerado. Ele não será exibido novamente.", "success");
-    await loadRound();
-  });
-
-  $("#copy-token").addEventListener("click", function () {
-    var value = $("#new-token .token-value").textContent;
-    if (navigator.clipboard) navigator.clipboard.writeText(value).then(function () { say("Token copiado.", "success"); });
-  });
-
-  async function removeParticipant(p) {
-    if (!window.confirm("Remover " + p.display_name + "? Os envios dessa pessoa também serão apagados.")) return;
-    var res = await db.from("participants").delete().eq("id", p.id);
-    if (res.error) return say(errText(res.error), "error");
-    say("Participante removido.", "success");
-    await loadRound();
+  var codeCache = {};
+  async function fetchSubmission(id) {
+    if (codeCache[id]) return codeCache[id];
+    var res = await db.from("submissions").select("id, round_id, submitted_name, code, submitted_at")
+      .eq("id", id).single();
+    if (res.error) throw res.error;
+    codeCache[id] = res.data;
+    return res.data;
   }
 
   // ------------------------------------------------------- visualização
   async function openSubmission(s) {
-    var res = await db.from("submissions").select("id, round_id, submitted_name, code, submitted_at")
-      .eq("id", s.id).single();
-    if (res.error) return say(errText(res.error), "error");
-    state.current = res.data;
+    var data;
+    try { data = await fetchSubmission(s.id); } catch (err) { return say(errText(err), "error"); }
+    state.current = data;
     $("#viewer").hidden = false;
-    $("#viewer-title").textContent = res.data.submitted_name + " · " + fmtTime(res.data.submitted_at);
-    $("#code").textContent = res.data.code; // texto puro, nunca HTML
+    $("#viewer-title").textContent = data.submitted_name + " · " + fmtTime(data.submitted_at);
+    $("#code").textContent = data.code; // texto puro, nunca HTML
     hidePreview();
     renderSubmissions();
     $("#viewer").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -307,7 +459,7 @@
     $("#preview-toggle").textContent = "Mostrar prévia isolada";
   }
 
-  // Faz os caminhos relativos (ex.: shopify-logo.svg) apontarem para os
+  // Faz os caminhos relativos (ex.: cupcake-monstro.svg) apontarem para os
   // assets do editor. Só acrescenta uma tag <base>; não interpreta o código.
   function withAssetBase(code) {
     var base = '<base href="' + new URL("../editor/assets/", window.location.href).href + '">';
@@ -330,12 +482,16 @@
     this.textContent = "Ocultar prévia";
   });
 
+  $("#viewer-fullscreen").addEventListener("click", function () {
+    if (state.current) openStage(state.current.id);
+  });
+
   $("#download").addEventListener("click", function () {
     var s = state.current;
     if (!s) return;
     var safe = function (v) {
       return String(v).normalize("NFD").replace(/[̀-ͯ]/g, "")
-        .replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "envio";
+        .replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "entrega";
     };
     var stamp = new Date(s.submitted_at).toISOString().replace(/[:.]/g, "-").slice(0, 19);
     // octet-stream: o navegador baixa o arquivo em vez de abri-lo aqui.
@@ -348,8 +504,112 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   });
 
+  // ------------------------------------------- apresentação em tela cheia
+  // Navega pela última entrega de cada participante da rodada escolhida.
+  var stage = $("#stage");
+  var stageFrame = $("#stage-frame");
+  var stageReference = $("#stage-reference");
+  var idleTimer = null;
+
+  async function openStage(startId) {
+    if (!state.submissions.length) return say("Nenhuma entrega para apresentar.", "error");
+    stage.hidden = false;
+    // Pedido ainda dentro do clique (exigência do navegador) e sem esperar:
+    // se a tela cheia for negada, o palco ocupa a janela mesmo assim.
+    if (stage.requestFullscreen) stage.requestFullscreen().catch(function () {});
+    stage.focus();
+    wakeStageBar();
+    // A lista do painel pode estar alguns segundos atrasada (ex.: entregas
+    // automáticas logo depois do fim): busca de novo antes de apresentar.
+    await loadSubmissions();
+    if (stage.hidden) return;
+    var list = latestPerDevice();
+    var index = list.findIndex(function (s) { return s.id === startId; });
+    if (index < 0 && startId) {
+      // Entrega antiga (não é a última da máquina): mostra ela primeiro.
+      var older = state.submissions.find(function (s) { return s.id === startId; });
+      if (older) list = [older].concat(list);
+    }
+    state.stage = { list: list, index: Math.max(0, index) };
+    await showStage();
+  }
+
+  async function showStage() {
+    var st = state.stage;
+    if (!st) return;
+    var item = st.list[st.index];
+    $("#stage-name").textContent = item.submitted_name;
+    $("#stage-count").textContent = (st.index + 1) + " de " + st.list.length + " · entregue às " + fmtTime(item.submitted_at);
+    try {
+      var data = await fetchSubmission(item.id);
+      if (state.stage !== st || st.list[st.index] !== item) return;
+      stageFrame.setAttribute("sandbox", "");
+      stageFrame.srcdoc = withAssetBase(data.code);
+    } catch (err) {
+      say(errText(err), "error");
+    }
+  }
+
+  function moveStage(delta) {
+    var st = state.stage;
+    if (!st) return;
+    st.index = (st.index + delta + st.list.length) % st.list.length;
+    stageReference.hidden = true;
+    showStage();
+  }
+
+  async function toggleReference() {
+    if (!stageReference.hidden) { stageReference.hidden = true; return; }
+    var roundId = state.roundId;
+    if (!state.references[roundId]) {
+      var res = await db.rpc("materiais_rodada", { p_round: roundId });
+      if (res.error) return say(errText(res.error), "error");
+      state.references[roundId] = res.data.reference_image;
+    }
+    stageReference.src = state.references[roundId];
+    stageReference.hidden = false;
+  }
+
+  function closeStage() {
+    state.stage = null;
+    stage.hidden = true;
+    stageReference.hidden = true;
+    stageFrame.removeAttribute("srcdoc");
+    if (document.fullscreenElement) document.exitFullscreen();
+  }
+
+  // A barra some depois de alguns segundos parada para não cobrir o trabalho.
+  function wakeStageBar() {
+    stage.classList.remove("idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { stage.classList.add("idle"); }, 2500);
+  }
+
+  $("#present").addEventListener("click", function () { openStage(null); });
+  $("#stage-prev").addEventListener("click", function () { moveStage(-1); });
+  $("#stage-next").addEventListener("click", function () { moveStage(1); });
+  $("#stage-ref").addEventListener("click", toggleReference);
+  $("#stage-close").addEventListener("click", closeStage);
+  stage.addEventListener("mousemove", wakeStageBar);
+  // Clicar na prévia passa o foco para o iframe, que engoliria as setas;
+  // devolve o foco ao palco (a rolagem com o mouse continua funcionando).
+  window.addEventListener("blur", function () {
+    if (state.stage) setTimeout(function () { stage.focus(); }, 0);
+  });
+  document.addEventListener("fullscreenchange", function () {
+    if (!document.fullscreenElement && state.stage) closeStage();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (!state.stage) return;
+    wakeStageBar();
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); moveStage(1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); moveStage(-1); }
+    else if (e.key === "r" || e.key === "R") toggleReference();
+    else if (e.key === "Escape") closeStage();
+  });
+
   db.auth.onAuthStateChange(function (event) {
-    if (event === "SIGNED_OUT") { $("#app").hidden = true; }
+    if (event === "SIGNED_OUT") { $("#app").hidden = true; stopTimers(); }
   });
 
   refreshSession();

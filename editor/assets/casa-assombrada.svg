@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="480" viewBox="0 0 600 480">
+  <!-- lua -->
+  <circle cx="456" cy="118" r="88" fill="#c7f441"/>
+  <circle cx="424" cy="92" r="15" fill="#b3dd2f"/>
+  <circle cx="486" cy="146" r="21" fill="#b3dd2f"/>
+  <circle cx="490" cy="84" r="8" fill="#b3dd2f"/>
+
+  <!-- morcegos -->
+  <g fill="#e2d6f1">
+    <path transform="translate(150 92) scale(1.3)" d="M0 2 C-6 -6 -16 -8 -28 -3 C-22 -1 -20 5 -22 9 C-16 5 -10 7 -8 11 C-6 7 -3 5 0 7 C3 5 6 7 8 11 C10 7 16 5 22 9 C20 5 22 -1 28 -3 C16 -8 6 -6 0 2Z M-4 1 L-6 -7 L-1 -3 L1 -3 L6 -7 L4 1Z"/>
+    <path transform="translate(250 50) scale(.8)" d="M0 2 C-6 -6 -16 -8 -28 -3 C-22 -1 -20 5 -22 9 C-16 5 -10 7 -8 11 C-6 7 -3 5 0 7 C3 5 6 7 8 11 C10 7 16 5 22 9 C20 5 22 -1 28 -3 C16 -8 6 -6 0 2Z M-4 1 L-6 -7 L-1 -3 L1 -3 L6 -7 L4 1Z"/>
+  </g>
+
+  <!-- colina -->
+  <path d="M0 480 Q14 424 110 414 Q300 394 490 414 Q586 424 600 480Z" fill="#66418a"/>
+
+  <!-- árvores -->
+  <path d="M86 440 Q62 360 92 290 Q122 360 102 440Z" fill="#7560a8"/>
+  <path d="M506 436 Q484 370 512 312 Q540 372 522 436Z" fill="#7560a8"/>
+
+  <!-- casa -->
+  <rect x="372" y="150" width="30" height="80" fill="#6f2859"/>
+  <rect x="160" y="236" width="250" height="186" fill="#ead7ba"/>
+  <path d="M128 250 L285 112 L442 250 L424 268 L285 146 L146 268Z" fill="#f36b25"/>
+  <path d="M168 248 L285 146 L402 248Z" fill="#ead7ba"/>
+  <circle cx="285" cy="206" r="22" fill="#c7f441"/>
+  <path d="M285 184 V228 M263 206 H307" stroke="#28123d" stroke-width="5"/>
+  <rect x="186" y="276" width="62" height="70" fill="#c7f441"/>
+  <rect x="322" y="276" width="62" height="70" fill="#c7f441"/>
+  <path d="M217 276 V346 M186 311 H248 M353 276 V346 M322 311 H384" stroke="#28123d" stroke-width="5"/>
+  <path d="M256 422 V352 Q256 322 285 322 Q314 322 314 352 V422Z" fill="#6f2859"/>
+  <circle cx="302" cy="378" r="4" fill="#c7f441"/>
+  <rect x="240" y="420" width="90" height="12" fill="#28123d"/>
+
+  <!-- lápides -->
+  <path d="M30 452 V420 Q30 398 52 398 Q74 398 74 420 V452Z" fill="#7560a8"/>
+  <path d="M540 452 V424 Q540 406 558 406 Q576 406 576 424 V452Z" fill="#7560a8"/>
+  <path d="M52 410 V436 M43 419 H61" stroke="#28123d" stroke-width="4"/>
+</svg>

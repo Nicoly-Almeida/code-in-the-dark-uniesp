@@ -139,90 +139,86 @@
       <span class="event-name">Code in the Dark</span>
       <span>UNIESP</span>
     </header>
-    <p class="round-label">Rodada em andamento</p>
-    <h1>Valendo em</h1>
-    <div class="clock" id="clock" role="timer" aria-label="15 minutos restantes">15:00</div>
-    <p class="status" id="status" aria-live="polite">Pronto para começar</p>
-    <div class="controls" aria-label="Controles do cronômetro">
-      <button class="primary" id="toggle" type="button">Iniciar rodada</button>
-      <button id="reset" type="button">Reiniciar</button>
+    <p class="round-label" id="label">Aguardando</p>
+    <h1 id="title">Code in the Dark</h1>
+    <div class="clock" id="clock" role="timer" aria-label="sem rodada">--:--</div>
+    <p class="status" id="status" aria-live="polite">Conectando...</p>
+    <div class="controls">
       <button id="fullscreen" type="button">Tela cheia</button>
     </div>
-    <p class="hint">Espaco: iniciar/pausar &nbsp;|&nbsp; R: reiniciar &nbsp;|&nbsp; F: tela cheia</p>
+    <p class="hint">O tempo é controlado pelo painel da organização &nbsp;|&nbsp; F: tela cheia</p>
   </main>
+  <script src="../citd-config.js"></script>
   <script>
+    // Telão: acompanha a rodada atual no Supabase (play, pausa e fim vêm do painel).
     (function () {
-      var duration = 15 * 60;
-      var remaining = duration;
-      var deadline = null;
-      var interval = null;
+      var POLL_MS = 1500;
+      var cfg = window.CITD_CONFIG || {};
+      var label = document.getElementById("label");
+      var title = document.getElementById("title");
       var clock = document.getElementById("clock");
       var status = document.getElementById("status");
-      var toggle = document.getElementById("toggle");
-      var reset = document.getElementById("reset");
       var fullscreen = document.getElementById("fullscreen");
+      var state = null;
+      var offsetMs = 0;
+      var offline = false;
+
+      function rpc(name) {
+        var key = cfg.supabasePublishableKey;
+        return fetch(cfg.supabaseUrl + "/rest/v1/rpc/" + name, {
+          method: "POST",
+          cache: "no-store",
+          headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" },
+          body: "{}",
+        }).then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        });
+      }
 
       function render() {
-        var minutes = Math.floor(remaining / 60);
-        var seconds = remaining % 60;
-        var display = String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
-        clock.textContent = display;
-        clock.setAttribute("aria-label", display + " restantes");
-      }
-
-      function stop() {
-        window.clearInterval(interval);
-        interval = null;
-        deadline = null;
-      }
-
-      function finish() {
-        remaining = 0;
-        stop();
-        document.body.classList.remove("running");
-        document.body.classList.add("finished");
-        status.textContent = "Tempo esgotado: parem de digitar";
-        toggle.textContent = "Rodada encerrada";
-        toggle.disabled = true;
-        render();
-      }
-
-      function tick() {
-        remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-        render();
-        if (remaining === 0) finish();
-      }
-
-      function startOrPause() {
-        if (interval) {
-          remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-          stop();
-          document.body.classList.remove("running");
-          status.textContent = "Rodada pausada";
-          toggle.textContent = "Retomar rodada";
-          render();
-          return;
+        var now = Date.now() + offsetMs;
+        var phase = state ? state.status : null;
+        var remaining = 0;
+        if (phase === "valendo") {
+          remaining = Math.max(0, Math.ceil((Date.parse(state.ends_at) - now) / 1000));
+          if (remaining === 0) phase = "encerrada";
+        } else if (phase === "pausada") {
+          remaining = state.remaining_seconds;
         }
-        if (remaining === 0) return;
-        deadline = Date.now() + remaining * 1000;
-        interval = window.setInterval(tick, 200);
-        document.body.classList.add("running");
-        status.textContent = "Competidores, podem começar";
-        toggle.textContent = "Pausar rodada";
+
+        var display = state
+          ? String(Math.floor(remaining / 60)).padStart(2, "0") + ":" + String(remaining % 60).padStart(2, "0")
+          : "--:--";
+        clock.textContent = display;
+        clock.setAttribute("aria-label", state ? display + " restantes" : "sem rodada");
+        title.textContent = state ? state.title : "Code in the Dark";
+        document.body.classList.toggle("running", phase === "valendo");
+        document.body.classList.toggle("finished", phase === "encerrada");
+
+        var text = {
+          valendo: ["Rodada em andamento", "Competidores, podem começar"],
+          pausada: ["Rodada pausada", "Rodada pausada"],
+          encerrada: ["Rodada encerrada", "Tempo esgotado: parem de digitar"],
+        }[phase] || ["Aguardando", "Aguardando a próxima rodada"];
+        label.textContent = text[0];
+        status.textContent = offline ? "Sem conexão: tentando de novo..." : text[1];
       }
 
-      function resetClock() {
-        stop();
-        remaining = duration;
-        document.body.classList.remove("running", "finished");
-        status.textContent = "Pronto para começar";
-        toggle.disabled = false;
-        toggle.textContent = "Iniciar rodada";
-        render();
+      function poll() {
+        var sentAt = Date.now();
+        rpc("estado_atual").then(function (s) {
+          if (s && s.server_now) offsetMs = Date.parse(s.server_now) - (sentAt + Date.now()) / 2;
+          state = s;
+          offline = false;
+        }, function () {
+          offline = true;
+        }).then(function () {
+          render();
+          setTimeout(poll, POLL_MS);
+        });
       }
 
-      toggle.addEventListener("click", startOrPause);
-      reset.addEventListener("click", resetClock);
       fullscreen.addEventListener("click", function () {
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen();
@@ -232,17 +228,18 @@
       });
       document.addEventListener("keydown", function (event) {
         if (event.altKey || event.ctrlKey || event.metaKey) return;
-        if (event.code === "Space" && event.target.tagName !== "BUTTON") {
-          event.preventDefault();
-          startOrPause();
-        }
-        if (event.key.toLowerCase() === "r") resetClock();
         if (event.key.toLowerCase() === "f") fullscreen.click();
       });
       document.addEventListener("fullscreenchange", function () {
         fullscreen.textContent = document.fullscreenElement ? "Sair da tela cheia" : "Tela cheia";
       });
-      render();
+
+      if (window.location.protocol === "file:" || !cfg.supabaseUrl || !cfg.supabasePublishableKey) {
+        status.textContent = "Abra pelo endereço publicado do site para acompanhar a rodada.";
+        return;
+      }
+      setInterval(render, 250);
+      poll();
     })();
   </script>
 </body>

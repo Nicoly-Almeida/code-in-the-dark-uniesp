@@ -2,7 +2,9 @@
 # Variáveis de ambiente locais (segredos nunca vão para o Git)
 .env
 .env.*
-!.env.example
-supabase/functions/.env
 supabase/.temp/
 supabase/.branches/
+# Desafios: referências, instruções e gabaritos ficam fora do repositório
+# público. Eles entram no Supabase pelo botão "Importar desafios" do painel.
+desafios/
+node_modules/

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="400" viewBox="0 0 520 400">
+  <circle cx="270" cy="210" r="172" fill="#eab0a2"/>
+
+  <!-- bala -->
+  <g transform="translate(78 112) rotate(-20)">
+    <path d="M-28 0 L-50 -17 L-50 17Z M28 0 L50 -17 L50 17Z" fill="#552047"/>
+    <ellipse rx="32" ry="22" fill="#a9d943"/>
+    <path d="M-14 -19 Q-4 0 -14 19 M6 -21 Q16 0 6 21" stroke="#fff0d6" stroke-width="5" fill="none"/>
+  </g>
+
+  <!-- coração -->
+  <path d="M446 112 C446 92 470 84 480 102 C490 84 514 92 514 112 C514 134 480 152 480 152 C480 152 446 134 446 112Z" fill="#552047"/>
+
+  <!-- sombra -->
+  <ellipse cx="270" cy="372" rx="150" ry="11" fill="#d9958a"/>
+
+  <!-- forminha -->
+  <path d="M140 232 L400 232 L368 360 Q364 368 352 368 L188 368 Q176 368 172 360Z" fill="#552047"/>
+  <path d="M182 232 L196 368 M226 232 L234 368 M270 232 V368 M314 232 L306 368 M358 232 L344 368" stroke="#6e2e5e" stroke-width="10"/>
+
+  <!-- cobertura -->
+  <path d="M126 240 Q118 200 158 192 Q170 150 220 156 Q244 114 292 126 Q342 114 360 160 Q408 160 412 200 Q428 220 414 244 Q270 262 126 240Z" fill="#f47521"/>
+  <path d="M226 160 Q230 112 276 108 Q322 110 322 156Z" fill="#f47521"/>
+  <path d="M258 112 Q270 74 292 84 Q280 96 290 112Z" fill="#f47521"/>
+  <path d="M292 86 Q300 58 326 60 Q318 84 292 86Z" fill="#a9d943"/>
+  <path d="M168 206 Q198 186 228 196" stroke="#ff9d55" stroke-width="8" fill="none" stroke-linecap="round"/>
+
+  <!-- granulado -->
+  <g stroke-width="6" stroke-linecap="round">
+    <path d="M330 140 L342 134" stroke="#fff0d6"/>
+    <path d="M380 196 L386 208" stroke="#552047"/>
+    <path d="M152 222 L164 226" stroke="#a9d943"/>
+    <path d="M250 136 L256 146" stroke="#552047"/>
+    <path d="M396 230 L384 234" stroke="#fff0d6"/>
+  </g>
+
+  <!-- rosto -->
+  <circle cx="230" cy="196" r="17" fill="#fff0d6"/>
+  <circle cx="312" cy="196" r="17" fill="#fff0d6"/>
+  <circle cx="234" cy="200" r="8" fill="#25152e"/>
+  <circle cx="316" cy="200" r="8" fill="#25152e"/>
+  <path d="M246 224 Q271 244 296 224" stroke="#25152e" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M262 233 L266 246 L272 235Z" fill="#fff0d6"/>
+
+  <!-- fantasminha de merengue -->
+  <path d="M440 336 Q440 266 470 262 Q500 266 500 336 Q492 328 485 336 Q478 328 470 336 Q462 328 455 336 Q448 328 440 336Z" fill="#fff0d6"/>
+  <circle cx="462" cy="292" r="4" fill="#25152e"/>
+  <circle cx="478" cy="292" r="4" fill="#25152e"/>
+  <ellipse cx="470" cy="308" rx="4" ry="6" fill="#552047"/>
+</svg>

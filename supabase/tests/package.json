@@ -1,0 +1,13 @@
+{
+  "name": "citd-testes",
+  "private": true,
+  "type": "module",
+  "description": "Testes do banco (PGlite) e de ponta a ponta (Chrome headless + Supabase simulado).",
+  "scripts": {
+    "test": "node db-test.mjs",
+    "e2e": "node e2e.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.6"
+  }
+}
