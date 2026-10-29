@@ -38,6 +38,22 @@
     ".citd-bar .msg{display:block;white-space:normal;color:#ccc}",
     ".citd-bar .msg.error{color:#FF8A7A}.citd-bar .msg.success{color:#4EFFA1}",
     "body.citd-finished .citd-bar,body.citd-finished .citd-lock{display:none}",
+    // Depois do Finish a barra some; o aviso da entrega aparece por cima do resultado.
+    ".citd-toast{position:absolute;z-index:70;top:12px;left:50%;transform:translateX(-50%);max-width:calc(100% - 40px);",
+    "box-sizing:border-box;padding:8px 16px;background:rgba(0,0,0,.85);color:#4EFFA1;font-size:12px;line-height:1.6;",
+    "text-align:center;pointer-events:none}",
+    ".citd-toast.error{color:#FF8A7A}.citd-toast[hidden]{display:none}",
+    // Confirmação do Finish (substitui o prompt em inglês do editor original).
+    ".citd-modal{position:absolute;z-index:120;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)}",
+    ".citd-modal[hidden]{display:none}",
+    ".citd-modal form{width:480px;max-width:calc(100% - 40px);box-sizing:border-box;padding:20px;background:#111;",
+    "border:2px solid #E94D35;color:#fff;font-size:12px;line-height:1.7}",
+    ".citd-modal h2{font-size:14px;margin:0 0 12px}.citd-modal p{margin:0 0 12px;color:#ccc}",
+    ".citd-modal input{width:100%;box-sizing:border-box;margin-top:6px;padding:8px;font:16px monospace;background:#000;color:#fff;border:1px solid #555}",
+    ".citd-modal input:focus{outline:2px solid #4EFFA1}",
+    ".citd-modal .actions{margin-top:14px;text-align:right}.citd-modal .actions button{margin-left:8px}",
+    ".citd-modal .cancel{background:#444}.citd-modal .confirm{background:#E94D35}",
+    ".citd-modal .confirm[disabled]{opacity:.35;cursor:not-allowed}",
     ".citd-lock{position:absolute;z-index:30;inset:0;display:flex;align-items:center;justify-content:center;",
     "background:rgba(0,0,0,.6);color:#fff;font-size:20px;text-align:center;padding:40px;box-sizing:border-box}",
     ".citd-lock[hidden]{display:none}",
@@ -57,12 +73,37 @@
   lock.className = "citd-lock";
   document.body.appendChild(lock);
 
+  var toast = document.createElement("div");
+  toast.className = "citd-toast";
+  toast.setAttribute("role", "status");
+  toast.hidden = true;
+  document.body.appendChild(toast);
+  var toastTimer = null;
+
+  var CONFIRM_WORD = "sim";
+  var modal = document.createElement("div");
+  modal.className = "citd-modal";
+  modal.hidden = true;
+  modal.innerHTML =
+    '<form novalidate role="dialog" aria-modal="true" aria-labelledby="citd-finish-title">' +
+    '<h2 id="citd-finish-title">Finalizar e mostrar o resultado?</h2>' +
+    '<p class="warning"></p>' +
+    '<label for="citd-finish-input">Digite "<strong>' + CONFIRM_WORD + '</strong>" para confirmar:</label>' +
+    '<input id="citd-finish-input" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+    '<div class="actions"><button type="button" class="cancel">Cancelar</button>' +
+    '<button type="submit" class="confirm" disabled>Confirmar</button></div></form>';
+  document.body.appendChild(modal);
+  var modalForm = modal.querySelector("form");
+  var modalWarning = modal.querySelector(".warning");
+  var modalInput = modal.querySelector("input");
+  var modalConfirm = modal.querySelector(".confirm");
+
   var state = null;       // último estado lido do servidor
   var offsetMs = 0;       // relógio do servidor - relógio local
   var loadedRun = null;   // rodada cujos materiais estão na tela
   var loadingRun = null;
   var sending = false;
-  var autoRun = null;     // rodada com entrega automática em andamento
+  var finalRun = null;    // rodada com a entrega final (Finish ou fim do tempo) em andamento
 
   function read(key) {
     try { return window.localStorage.getItem(key) || ""; } catch (e) { return ""; }
@@ -94,14 +135,23 @@
     return ace ? ace.getValue() : read("content");
   }
 
+  function finished() { return document.body.classList.contains("citd-finished"); }
+
   function setMessage(text, kind) {
     barMsg.textContent = text || "";
     barMsg.className = "msg" + (kind ? " " + kind : "");
+    // Com o resultado na tela a barra fica escondida: avisa por cima dele.
+    clearTimeout(toastTimer);
+    toast.hidden = !text || !finished();
+    toast.textContent = text || "";
+    toast.className = "citd-toast" + (kind === "error" ? " error" : "");
+    if (kind === "success") toastTimer = setTimeout(function () { toast.hidden = true; }, 6000);
   }
 
+  // Depois do Finish o editor fica travado até a próxima rodada.
   function setLocked(text) {
     var ace = getAce();
-    if (ace) ace.setReadOnly(!!text);
+    if (ace) ace.setReadOnly(!!text || finished());
     lock.textContent = text || "";
     lock.hidden = !text;
   }
@@ -197,14 +247,14 @@
     sending = true;
     button.disabled = true;
     button.textContent = "Entregando...";
-    setMessage(isAuto ? "Tempo esgotado: entregando seu código..." : "Entregando...", "");
+    setMessage(isAuto && effectiveStatus() === "encerrada" ? "Tempo esgotado: entregando seu código..." : "Entregando...", "");
     return rpc("entregar", { p_round: state.round, p_device: deviceId(), p_name: name, p_code: code })
       .then(function (at) {
         var time = fmtTime(new Date(at));
         button.classList.add("is-success");
         button.textContent = "Entregue " + time;
-        setMessage("Entregue às " + time + "." + (effectiveStatus() === "encerrada"
-          ? " Agora clique em Finish para ver seu resultado."
+        setMessage("Entregue às " + time + "." + (finished() ? ""
+          : effectiveStatus() === "encerrada" ? " Agora clique em Finish para ver seu resultado."
           : " Pode entregar de novo até o fim; vale a última entrega."), "success");
         return true;
       }, function (err) {
@@ -220,21 +270,28 @@
       });
   }
 
-  // Entrega automática no fim do tempo, uma vez por rodada, com novas
-  // tentativas enquanto a tolerância do servidor permitir.
-  function autoDeliver() {
+  function canDeliverNow() {
+    var status = effectiveStatus();
     var run = runId(state);
-    if (!run || autoRun === run || read("citd_auto_" + run) || read(RUN_KEY) !== run) return;
-    autoRun = run;
+    return !!run && read(RUN_KEY) === run && (status === "valendo" || status === "pausada" ||
+      (status === "encerrada" && withinGrace()));
+  }
+
+  // Entrega final, uma vez por rodada: no Finish ou quando o tempo acaba (o
+  // que vier primeiro), com novas tentativas enquanto o servidor aceitar.
+  function finalDeliver() {
+    var run = runId(state);
+    if (!run || finalRun === run || read("citd_auto_" + run) || read(RUN_KEY) !== run) return;
+    finalRun = run;
     var attempt = function () {
       if (runId(state) !== run) return;
       if (!currentCode().trim()) {
         write("citd_auto_" + run, "1");
-        setMessage("Tempo esgotado. O editor estava vazio: nada foi entregue.", "");
+        setMessage("O editor estava vazio: nada foi entregue.", "");
         return;
       }
       deliver(true).then(function (ok) {
-        if (ok || !withinGrace()) write("citd_auto_" + run, "1");
+        if (ok || !canDeliverNow()) write("citd_auto_" + run, "1");
         else setTimeout(attempt, 3000);
       });
     };
@@ -307,9 +364,7 @@
       setLocked("Rodada encerrada. Aguarde a próxima.");
     }
 
-    var canDeliver = !!state && mine && (status === "valendo" || status === "pausada" ||
-      (status === "encerrada" && withinGrace()));
-    if (!sending) button.disabled = !canDeliver;
+    if (!sending) button.disabled = !canDeliverNow();
   }
 
   // Sem rodada ou rodada reiniciada ("pronta"): volta para a tela de espera.
@@ -326,7 +381,7 @@
     if (state && status !== "pronta") loadMaterials();
     else hideMaterials();
     render();
-    if (effectiveStatus() === "encerrada") autoDeliver();
+    if (effectiveStatus() === "encerrada") finalDeliver();
   }
 
   function poll() {
@@ -351,16 +406,60 @@
     return "";
   }
 
-  var finish = document.querySelector(".finish-button");
-  if (finish) finish.addEventListener("click", function () {
-    // O handler original (prompt síncrono) termina antes deste setTimeout.
-    setTimeout(function () {
-      // .result vem depois deste script no HTML: só existe no DOM depois.
-      var result = document.querySelector(".result");
-      if (result && result.style.display && result.style.display !== "none") {
-        document.body.classList.add("citd-finished");
-      }
-    }, 0);
+  // ------------------------------------------------------------- Finish
+  // O clique é interceptado antes do editor original, que pediria "yes" num
+  // prompt em inglês. Aqui o Confirmar só libera com a palavra certa.
+  function openFinish() {
+    var status = effectiveStatus();
+    modalWarning.textContent = !canDeliverNow()
+      ? "O resultado do seu código aparece na tela e o editor trava."
+      : status === "valendo" || status === "pausada"
+        ? "A rodada ainda está valendo. Ao finalizar, seu código é entregue, o editor trava e o resultado aparece na tela. Finalizar antes do fim pode desclassificar você."
+        : "Seu código é entregue (se ainda não foi), o editor trava e o resultado aparece na tela.";
+    modalInput.value = "";
+    modalConfirm.disabled = true;
+    modal.hidden = false;
+    modalInput.focus();
+  }
+
+  function closeFinish() {
+    modal.hidden = true;
+    var ace = getAce();
+    if (ace && !finished()) ace.focus();
+  }
+
+  // O mesmo que o Finish original fazia, mais a entrega e a trava do editor.
+  function showResult() {
+    // .result vem depois deste script no HTML: só existe no DOM depois.
+    var result = document.querySelector(".result");
+    if (!result) return;
+    result.contentWindow.postMessage(currentCode(), window.location.protocol === "file:" ? "*" : window.location.origin);
+    result.style.display = "block";
+    if (reference) reference.style.display = "none";
+    document.body.classList.add("citd-finished");
+    render(); // trava o editor
+    // Quem termina antes do tempo não depende do botão Entregar.
+    if (canDeliverNow()) finalDeliver();
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest || !e.target.closest(".finish-button")) return;
+    e.stopPropagation(); // o handler original (prompt "yes") não roda
+    e.preventDefault();
+    openFinish();
+  }, true);
+  modalInput.addEventListener("input", function () {
+    modalConfirm.disabled = modalInput.value.trim().toLowerCase() !== CONFIRM_WORD;
+  });
+  modalForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (modalConfirm.disabled) return;
+    closeFinish();
+    showResult();
+  });
+  modal.querySelector(".cancel").addEventListener("click", closeFinish);
+  modal.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeFinish();
   });
 
   button.addEventListener("click", function () { deliver(false); });
@@ -377,7 +476,7 @@
   setInterval(function () {
     var before = effectiveStatus();
     render();
-    if (before === "encerrada" && state) autoDeliver();
+    if (before === "encerrada" && state) finalDeliver();
   }, 250);
   poll();
 })();

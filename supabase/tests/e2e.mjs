@@ -40,6 +40,19 @@ function participant(name) {
 const lockText = `(() => { const l = document.querySelector(".citd-lock"); return l.hidden ? "" : l.textContent; })()`;
 const readOnly = `document.getElementById("editor").env.editor.getReadOnly()`;
 const barMsg = `document.querySelector(".citd-bar .msg").textContent`;
+const typeConfirm = (value) => `(() => { const i = document.querySelector(".citd-modal input");
+  i.value = ${JSON.stringify(value)}; i.dispatchEvent(new Event("input")); return document.querySelector(".citd-modal .confirm").disabled; })()`;
+
+// Finish pela janela de confirmação: "yes" não libera, "sim" libera.
+async function finishVia(p) {
+  await p.eval(`document.querySelector(".finish-button").click()`);
+  await p.waitFor(`!document.querySelector(".citd-modal").hidden`, "janela de confirmação do Finish");
+  if (!(await p.eval(`document.querySelector(".citd-modal .confirm").disabled`))) throw new Error("Confirmar habilitado sem digitar");
+  if (!(await p.eval(typeConfirm("yes")))) throw new Error("Confirmar habilitado com 'yes'");
+  if (await p.eval(typeConfirm(" SIM "))) throw new Error("Confirmar desabilitado com 'sim'");
+  await p.eval(`document.querySelector(".citd-modal .confirm").click()`);
+  await p.waitFor(`document.querySelector(".citd-modal").hidden && document.querySelector(".result").style.display === "block"`, "resultado depois de confirmar");
+}
 
 try {
   // ---------------------------------------------------------------- setup
@@ -153,10 +166,20 @@ try {
   if (!(await bia.eval(`document.querySelector(".deliver-button").disabled`))) throw new Error("Bia não deveria poder entregar");
   ok("participante que abre depois do fim vê 'rodada encerrada' e não entrega");
 
-  // Finish da Ana mostra o resultado com as imagens da rodada
+  // Finish da Ana: cancelar não faz nada; confirmar com "sim" mostra o resultado.
   await ana.eval(`document.querySelector(".finish-button").click()`);
+  await ana.waitFor(`!document.querySelector(".citd-modal").hidden`, "janela do Finish");
+  await shot(ana, "7-editor-confirmar-finish");
+  await ana.eval(`document.querySelector(".citd-modal .cancel").click()`);
+  await sleep(300);
+  if (await ana.eval(`document.querySelector(".result").style.display === "block" || document.body.classList.contains("citd-finished")`)) {
+    throw new Error("Cancelar mostrou o resultado");
+  }
+  await finishVia(ana);
   await ana.waitFor(`document.body.classList.contains("citd-finished")`, "Finish");
-  ok("Finish funciona e esconde a barra de tempo");
+  await ana.waitFor(`document.querySelector(".result").contentDocument.body.textContent.includes("versão final")`, "código no resultado");
+  if (ana.dialogs.some((d) => /Type "yes"/.test(d))) throw new Error("o prompt em inglês do editor original apareceu");
+  ok("Finish: janela em português, Cancelar não faz nada, Confirmar só com 'sim'; resultado mostra o código");
 
   // --------------------------------------------------- apresentação no painel
   // Logo após o fim, sem esperar a atualização automática da lista.
@@ -208,12 +231,26 @@ try {
   await bia.eval(`document.getElementById("editor").env.editor.insert("<h1>Doces da Bia v2</h1>")`);
   ok("▶ Iniciar de novo: tempo recomeça e o editor começa limpo");
 
+  // Finish no meio da rodada, sem clicar em Entregar: entrega sozinho e trava.
+  await sleep(400); // salva no localStorage (debounce do editor)
+  await bia.eval(`document.querySelector(".finish-button").click()`);
+  await bia.waitFor(`document.querySelector(".citd-modal .warning").textContent.includes("ainda está valendo")`, "aviso de rodada valendo");
+  await bia.eval(`document.querySelector(".citd-modal .cancel").click()`);
+  await finishVia(bia);
+  await bia.waitFor(`document.body.classList.contains("citd-finished")`, "Finish da Bia");
+  await bia.waitFor(`(() => { const t = document.querySelector(".citd-toast"); return !t.hidden && t.textContent.startsWith("Entregue às"); })()`, "aviso de entrega por cima do resultado");
+  if (!(await bia.eval(readOnly))) throw new Error("editor deveria travar depois do Finish");
+  const fin = await db.query(`select code from public.submissions where round_id = 'rodada-2-doce-mordida'`);
+  if (fin.rows.length !== 1 || !fin.rows[0].code.includes("Doces da Bia v2")) throw new Error(JSON.stringify(fin.rows));
+  await shot(bia, "6-editor-finish");
+  ok("Finish sem Entregar: entrega o código, trava o editor e avisa por cima do resultado");
+
   await admin.eval(`document.getElementById("live-end").click()`);
-  await bia.waitFor(`${barMsg}.startsWith("Entregue às")`, "entrega automática da Bia ao encerrar", 8000);
   await ana.waitFor(`${barMsg}.includes("vazio")`, "Ana sem código na rodada 2", 8000);
+  await sleep(2500); // tempo para uma entrega automática duplicada aparecer, se houvesse
   const r2 = await db.query(`select submitted_name from public.submissions where round_id = 'rodada-2-doce-mordida'`);
   if (r2.rows.length !== 1 || r2.rows[0].submitted_name !== "Bia") throw new Error(JSON.stringify(r2.rows));
-  ok("encerrar agora: Bia entrega sozinha; editor vazio da Ana não gera entrega");
+  ok("encerrar agora: quem já deu Finish não entrega de novo; editor vazio da Ana não gera entrega");
 
   // Reiniciar
   await admin.waitFor(`[...document.querySelectorAll("#rounds-table tbody tr")][1].textContent.includes("Reiniciar")`, "botão Reiniciar");
