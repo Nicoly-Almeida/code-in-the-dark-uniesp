@@ -208,12 +208,23 @@ try {
   await bia.eval(`document.getElementById("editor").env.editor.insert("<h1>Doces da Bia v2</h1>")`);
   ok("▶ Iniciar de novo: tempo recomeça e o editor começa limpo");
 
+  // Finish no meio da rodada, sem clicar em Entregar: entrega sozinho e trava.
+  await sleep(400); // salva no localStorage (debounce do editor)
+  await bia.eval(`document.querySelector(".finish-button").click()`);
+  await bia.waitFor(`document.body.classList.contains("citd-finished")`, "Finish da Bia");
+  await bia.waitFor(`(() => { const t = document.querySelector(".citd-toast"); return !t.hidden && t.textContent.startsWith("Entregue às"); })()`, "aviso de entrega por cima do resultado");
+  if (!(await bia.eval(readOnly))) throw new Error("editor deveria travar depois do Finish");
+  const fin = await db.query(`select code from public.submissions where round_id = 'rodada-2-doce-mordida'`);
+  if (fin.rows.length !== 1 || !fin.rows[0].code.includes("Doces da Bia v2")) throw new Error(JSON.stringify(fin.rows));
+  await shot(bia, "6-editor-finish");
+  ok("Finish sem Entregar: entrega o código, trava o editor e avisa por cima do resultado");
+
   await admin.eval(`document.getElementById("live-end").click()`);
-  await bia.waitFor(`${barMsg}.startsWith("Entregue às")`, "entrega automática da Bia ao encerrar", 8000);
   await ana.waitFor(`${barMsg}.includes("vazio")`, "Ana sem código na rodada 2", 8000);
+  await sleep(2500); // tempo para uma entrega automática duplicada aparecer, se houvesse
   const r2 = await db.query(`select submitted_name from public.submissions where round_id = 'rodada-2-doce-mordida'`);
   if (r2.rows.length !== 1 || r2.rows[0].submitted_name !== "Bia") throw new Error(JSON.stringify(r2.rows));
-  ok("encerrar agora: Bia entrega sozinha; editor vazio da Ana não gera entrega");
+  ok("encerrar agora: quem já deu Finish não entrega de novo; editor vazio da Ana não gera entrega");
 
   // Reiniciar
   await admin.waitFor(`[...document.querySelectorAll("#rounds-table tbody tr")][1].textContent.includes("Reiniciar")`, "botão Reiniciar");
