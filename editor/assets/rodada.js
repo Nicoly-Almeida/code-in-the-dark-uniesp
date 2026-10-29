@@ -43,6 +43,17 @@
     "box-sizing:border-box;padding:8px 16px;background:rgba(0,0,0,.85);color:#4EFFA1;font-size:12px;line-height:1.6;",
     "text-align:center;pointer-events:none}",
     ".citd-toast.error{color:#FF8A7A}.citd-toast[hidden]{display:none}",
+    // Confirmação do Finish (substitui o prompt em inglês do editor original).
+    ".citd-modal{position:absolute;z-index:120;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)}",
+    ".citd-modal[hidden]{display:none}",
+    ".citd-modal form{width:480px;max-width:calc(100% - 40px);box-sizing:border-box;padding:20px;background:#111;",
+    "border:2px solid #E94D35;color:#fff;font-size:12px;line-height:1.7}",
+    ".citd-modal h2{font-size:14px;margin:0 0 12px}.citd-modal p{margin:0 0 12px;color:#ccc}",
+    ".citd-modal input{width:100%;box-sizing:border-box;margin-top:6px;padding:8px;font:16px monospace;background:#000;color:#fff;border:1px solid #555}",
+    ".citd-modal input:focus{outline:2px solid #4EFFA1}",
+    ".citd-modal .actions{margin-top:14px;text-align:right}.citd-modal .actions button{margin-left:8px}",
+    ".citd-modal .cancel{background:#444}.citd-modal .confirm{background:#E94D35}",
+    ".citd-modal .confirm[disabled]{opacity:.35;cursor:not-allowed}",
     ".citd-lock{position:absolute;z-index:30;inset:0;display:flex;align-items:center;justify-content:center;",
     "background:rgba(0,0,0,.6);color:#fff;font-size:20px;text-align:center;padding:40px;box-sizing:border-box}",
     ".citd-lock[hidden]{display:none}",
@@ -68,6 +79,24 @@
   toast.hidden = true;
   document.body.appendChild(toast);
   var toastTimer = null;
+
+  var CONFIRM_WORD = "sim";
+  var modal = document.createElement("div");
+  modal.className = "citd-modal";
+  modal.hidden = true;
+  modal.innerHTML =
+    '<form novalidate role="dialog" aria-modal="true" aria-labelledby="citd-finish-title">' +
+    '<h2 id="citd-finish-title">Finalizar e mostrar o resultado?</h2>' +
+    '<p class="warning"></p>' +
+    '<label for="citd-finish-input">Digite "<strong>' + CONFIRM_WORD + '</strong>" para confirmar:</label>' +
+    '<input id="citd-finish-input" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+    '<div class="actions"><button type="button" class="cancel">Cancelar</button>' +
+    '<button type="submit" class="confirm" disabled>Confirmar</button></div></form>';
+  document.body.appendChild(modal);
+  var modalForm = modal.querySelector("form");
+  var modalWarning = modal.querySelector(".warning");
+  var modalInput = modal.querySelector("input");
+  var modalConfirm = modal.querySelector(".confirm");
 
   var state = null;       // último estado lido do servidor
   var offsetMs = 0;       // relógio do servidor - relógio local
@@ -377,19 +406,60 @@
     return "";
   }
 
-  var finish = document.querySelector(".finish-button");
-  if (finish) finish.addEventListener("click", function () {
-    // O handler original (prompt síncrono) termina antes deste setTimeout.
-    setTimeout(function () {
-      // .result vem depois deste script no HTML: só existe no DOM depois.
-      var result = document.querySelector(".result");
-      if (result && result.style.display && result.style.display !== "none") {
-        document.body.classList.add("citd-finished");
-        render(); // trava o editor
-        // Finish também entrega: quem termina antes do tempo não depende do botão Entregar.
-        if (canDeliverNow()) finalDeliver();
-      }
-    }, 0);
+  // ------------------------------------------------------------- Finish
+  // O clique é interceptado antes do editor original, que pediria "yes" num
+  // prompt em inglês. Aqui o Confirmar só libera com a palavra certa.
+  function openFinish() {
+    var status = effectiveStatus();
+    modalWarning.textContent = !canDeliverNow()
+      ? "O resultado do seu código aparece na tela e o editor trava."
+      : status === "valendo" || status === "pausada"
+        ? "A rodada ainda está valendo. Ao finalizar, seu código é entregue, o editor trava e o resultado aparece na tela. Finalizar antes do fim pode desclassificar você."
+        : "Seu código é entregue (se ainda não foi), o editor trava e o resultado aparece na tela.";
+    modalInput.value = "";
+    modalConfirm.disabled = true;
+    modal.hidden = false;
+    modalInput.focus();
+  }
+
+  function closeFinish() {
+    modal.hidden = true;
+    var ace = getAce();
+    if (ace && !finished()) ace.focus();
+  }
+
+  // O mesmo que o Finish original fazia, mais a entrega e a trava do editor.
+  function showResult() {
+    // .result vem depois deste script no HTML: só existe no DOM depois.
+    var result = document.querySelector(".result");
+    if (!result) return;
+    result.contentWindow.postMessage(currentCode(), window.location.protocol === "file:" ? "*" : window.location.origin);
+    result.style.display = "block";
+    if (reference) reference.style.display = "none";
+    document.body.classList.add("citd-finished");
+    render(); // trava o editor
+    // Quem termina antes do tempo não depende do botão Entregar.
+    if (canDeliverNow()) finalDeliver();
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest || !e.target.closest(".finish-button")) return;
+    e.stopPropagation(); // o handler original (prompt "yes") não roda
+    e.preventDefault();
+    openFinish();
+  }, true);
+  modalInput.addEventListener("input", function () {
+    modalConfirm.disabled = modalInput.value.trim().toLowerCase() !== CONFIRM_WORD;
+  });
+  modalForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (modalConfirm.disabled) return;
+    closeFinish();
+    showResult();
+  });
+  modal.querySelector(".cancel").addEventListener("click", closeFinish);
+  modal.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeFinish();
   });
 
   button.addEventListener("click", function () { deliver(false); });
