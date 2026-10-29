@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="560" viewBox="957 247 360 560">
+  <!-- estrelas -->
+  <g fill="#fff0d6">
+    <circle cx="985" cy="290" r="3"/><circle cx="1296" cy="610" r="3"/>
+    <circle cx="1004" cy="640" r="2"/><circle cx="1290" cy="262" r="2"/>
+  </g>
+  <circle cx="1137" cy="434" r="157" fill="#c7f441"/>
+  <path d="M1027 386 Q1048 285 1123 301 Q1177 265 1220 325 Q1288 347 1261 433 Q1284 482 1241 528 L1032 528 Q985 479 1027 386Z" fill="#171b19"/>
+  <path d="M1036 417 Q1083 373 1122 415 Q1160 372 1200 416 Q1234 398 1251 431 L1242 479 Q1206 510 1168 480 Q1129 512 1088 480 Q1054 502 1022 474Z" fill="#ff6a1a"/>
+  <path d="M1090 424 L1109 437 L1092 447Z M1167 424 L1186 437 L1169 447Z" fill="#171b19"/>
+  <path d="M1110 469 L1122 451 L1135 469 L1148 451 L1160 469" fill="none" stroke="#171b19" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M1065 313 Q1045 255 1097 247 Q1090 286 1121 299 M1192 297 Q1222 248 1264 276 Q1224 296 1220 334" fill="#ff6a1a"/>
+  <circle cx="1062" cy="553" r="15" fill="#fff0d6"/>
+  <circle cx="1215" cy="553" r="15" fill="#fff0d6"/>
+  <path d="M1080 561 Q1137 592 1197 561 L1210 807 L1067 807Z" fill="#171b19"/>
+  <path d="M1096 582 L1137 621 L1180 582 L1196 807 L1080 807Z" fill="#a52635"/>
+  <path d="M1100 624 L1137 652 L1175 624" fill="none" stroke="#fff0d6" stroke-width="5"/>
+</svg>

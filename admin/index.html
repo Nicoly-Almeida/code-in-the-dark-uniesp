@@ -7,7 +7,7 @@
   <meta name="referrer" content="no-referrer">
   <!--
     CSP: o painel só executa scripts deste site e só conversa com o Supabase.
-    A prévia (iframe srcdoc + sandbox="") herda esta política: sem scripts,
+    As prévias (iframe srcdoc + sandbox="") herdam esta política: sem scripts,
     sem formulários, sem requisições externas.
   -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src https://*.supabase.co; frame-src 'self'; base-uri 'self'; form-action 'none'">
@@ -36,53 +36,53 @@
     </section>
 
     <section id="app" hidden>
+      <section class="live box" id="live">
+        <div>
+          <span id="live-status" class="badge closed">Aguardando</span>
+          <h2 id="live-title">Nenhuma rodada iniciada</h2>
+        </div>
+        <div class="live-clock" id="live-clock" role="timer">--:--</div>
+        <div class="round-actions">
+          <button type="button" id="live-pause" hidden>Pausar</button>
+          <button type="button" id="live-end" class="danger" hidden>Encerrar agora</button>
+          <a class="button secondary" href="../evento/" target="_blank" rel="noopener">Abrir telão</a>
+        </div>
+      </section>
+
       <div class="columns">
         <div>
           <h2>Rodadas</h2>
-          <table class="list" id="rounds-table">
-            <thead><tr><th>Rodada</th><th>Status</th><th>Limite</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-          <details class="box">
-            <summary>Nova rodada</summary>
-            <form id="round-form" class="stack">
-              <label>Identificador <input name="id" required pattern="[a-z0-9][a-z0-9\-]{0,39}" placeholder="rodada-1"></label>
-              <label>Título <input name="title" required maxlength="120" placeholder="Rodada 1"></label>
-              <label>Limite do código (KB) <input name="kb" type="number" min="1" max="500" value="100" required></label>
-              <button type="submit">Criar rodada (fechada)</button>
-            </form>
+          <div class="table-scroll">
+            <table class="list" id="rounds-table">
+              <thead><tr><th>Rodada</th><th>Status</th><th>Tempo</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <details class="box" id="import-box">
+            <summary>Importar desafios</summary>
+            <p class="hint">
+              Escolha a pasta <code>desafios/halloween</code>. O painel lê de cada
+              <code>rodada-N-nome/assets/</code> só o <code>instructions.html</code> e o
+              <code>page.png</code>. O gabarito (<code>referencia.html</code>) não é enviado.
+              Reimportar atualiza as rodadas existentes.
+            </p>
+            <input type="file" id="import-input" webkitdirectory multiple>
           </details>
         </div>
 
         <div id="round-detail" hidden>
           <h2 id="round-title"></h2>
+          <h3>Entregas</h3>
           <p class="round-actions">
-            <span id="round-status" class="badge"></span>
-            <button type="button" id="toggle-round"></button>
-            <button type="button" id="refresh" class="secondary">Atualizar</button>
+            <label class="check"><input type="checkbox" id="only-latest" checked> Só a última de cada participante</label>
+            <button type="button" id="present" class="secondary">Apresentar em tela cheia</button>
           </p>
-
-          <h3>Participantes</h3>
-          <form id="participant-form" class="inline">
-            <input name="name" required maxlength="80" placeholder="Nome ou equipe" aria-label="Nome ou equipe">
-            <button type="submit">Gerar token</button>
-          </form>
-          <div id="new-token" class="box token-box" hidden>
-            <p>Token de <strong class="token-name"></strong> (aparece só agora, anote ou entregue impresso):</p>
-            <code class="token-value"></code>
-            <button type="button" class="secondary" id="copy-token">Copiar</button>
+          <div class="table-scroll">
+            <table class="list" id="submissions-table">
+              <thead><tr><th>Horário</th><th>Nome</th><th>Entregas</th><th>Tamanho</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
           </div>
-          <table class="list" id="participants-table">
-            <thead><tr><th>Nome</th><th>Envios</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-
-          <h3>Envios</h3>
-          <label class="check"><input type="checkbox" id="only-latest" checked> Só o último envio de cada participante</label>
-          <table class="list" id="submissions-table">
-            <thead><tr><th>Horário</th><th>Nome enviado</th><th>Participante</th><th>Tamanho</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
         </div>
       </div>
 
@@ -90,17 +90,33 @@
         <div class="viewer-head">
           <h2 id="viewer-title"></h2>
           <div>
-            <button type="button" id="download">Baixar .html</button>
+            <button type="button" id="viewer-fullscreen">Tela cheia</button>
+            <button type="button" id="download" class="secondary">Baixar .html</button>
             <button type="button" id="preview-toggle" class="secondary">Mostrar prévia isolada</button>
             <button type="button" id="close-viewer" class="secondary">Fechar</button>
           </div>
         </div>
         <p class="hint">O código é exibido como texto. A prévia roda em iframe isolado (sandbox sem scripts, sem formulários e sem acesso a este painel).</p>
-        <iframe id="preview" title="Prévia isolada do envio" sandbox="" referrerpolicy="no-referrer" hidden></iframe>
+        <iframe id="preview" title="Prévia isolada da entrega" sandbox="" referrerpolicy="no-referrer" hidden></iframe>
         <pre id="code"></pre>
       </section>
     </section>
   </main>
+
+  <div id="stage" tabindex="-1" hidden>
+    <iframe id="stage-frame" title="Prévia em tela cheia" sandbox="" referrerpolicy="no-referrer"></iframe>
+    <img id="stage-reference" alt="Referência da rodada" hidden>
+    <div class="stage-bar">
+      <strong id="stage-name"></strong>
+      <span id="stage-count" class="stage-count"></span>
+      <span class="stage-buttons">
+        <button type="button" id="stage-prev" class="secondary">← Anterior</button>
+        <button type="button" id="stage-next" class="secondary">Próximo →</button>
+        <button type="button" id="stage-ref" class="secondary">Referência (R)</button>
+        <button type="button" id="stage-close" class="secondary">Sair (Esc)</button>
+      </span>
+    </div>
+  </div>
 
   <script src="vendor/supabase-js-2.117.3.umd.js"></script>
   <script src="../citd-config.js"></script>

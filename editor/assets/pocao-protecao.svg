@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="200" viewBox="0 0 160 200">
+  <defs>
+    <clipPath id="vidro"><path d="M68 32 H92 V58 Q92 66 104 72 Q118 80 118 96 V176 Q118 188 106 188 H54 Q42 188 42 176 V96 Q42 80 56 72 Q68 66 68 58Z"/></clipPath>
+  </defs>
+  <path d="M68 32 H92 V58 Q92 66 104 72 Q118 80 118 96 V176 Q118 188 106 188 H54 Q42 188 42 176 V96 Q42 80 56 72 Q68 66 68 58Z" fill="#fffaf2" stroke="#1f1b2e" stroke-width="4" stroke-linejoin="round"/>
+  <path clip-path="url(#vidro)" d="M30 98 Q45 90 60 98 T90 98 T120 98 V200 H30Z" fill="#5fae4e"/>
+  <rect x="52" y="122" width="56" height="40" rx="4" fill="#fffaf2" stroke="#1f1b2e" stroke-width="3"/>
+  <path d="M64 142 Q80 130 96 142 Q80 154 64 142Z" fill="none" stroke="#1f1b2e" stroke-width="3"/>
+  <circle cx="80" cy="142" r="4" fill="#1f1b2e"/>
+  <path d="M50 104 V114" stroke="#fffaf2" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+  <rect x="66" y="12" width="28" height="22" rx="4" fill="#8a5a3c" stroke="#1f1b2e" stroke-width="4"/>
+</svg>
