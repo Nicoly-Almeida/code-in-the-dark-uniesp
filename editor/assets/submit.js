@@ -196,11 +196,12 @@
   }
 
   var finish = document.querySelector(".finish-button");
-  var result = document.querySelector(".result");
-  if (finish && result) finish.addEventListener("click", function () {
+  if (finish) finish.addEventListener("click", function () {
     // O handler original (prompt síncrono) termina antes deste setTimeout.
     setTimeout(function () {
-      if (result.style.display && result.style.display !== "none") {
+      // .result vem depois deste script no HTML: só existe no DOM depois.
+      var result = document.querySelector(".result");
+      if (result && result.style.display && result.style.display !== "none") {
         document.body.classList.add("citd-finished");
         closePanel();
       }
