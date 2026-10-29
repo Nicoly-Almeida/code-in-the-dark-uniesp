@@ -1,3 +1,15 @@
+# Code in the Dark UNIESP
+
+| Para quem | Link |
+| --- | --- |
+| Participantes (editor) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/editor/ |
+| Organização (painel) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/admin/ |
+| Projetor (telão com o cronômetro) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/evento/ |
+
+Abra o editor sempre por esse link, não pelo arquivo do computador. Roteiro do evento em [EVENTO-UNIESP.md](EVENTO-UNIESP.md); configuração do Supabase em [SUPABASE.md](SUPABASE.md).
+
+---
+
 # What is [Code in the Dark](http://codeinthedark.com)
 [Code in the Dark](http://codeinthedark.com) is a front-end (HTML, CSS) competition, originating from [Tictail](https://tictail.com), where each contestant compete to implement a website design given only a screenshot. The catch is that no previews of the results are allowed during the implementation, and no measuring tools can be used. The winner is decided by the audience.
 
