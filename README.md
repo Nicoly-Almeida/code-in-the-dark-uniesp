@@ -4,7 +4,8 @@
 | --- | --- |
 | Participantes (editor) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/editor/ |
 | Organização (painel) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/admin/ |
-| Projetor (telão com o cronômetro) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/evento/ |
+| Público (votação, pelo QR code do telão) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/votar/ |
+| Projetor (telão: cronômetro e código ao vivo) | https://nicoly-almeida.github.io/code-in-the-dark-uniesp/evento/ |
 
 Abra o editor sempre por esse link, não pelo arquivo do computador. Roteiro do evento em [EVENTO-UNIESP.md](EVENTO-UNIESP.md); configuração do Supabase em [SUPABASE.md](SUPABASE.md).
 

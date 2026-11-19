@@ -40,6 +40,7 @@
     CITD_OTHER_ROUND_ACTIVE: "Encerre a rodada em andamento antes de iniciar outra.",
     CITD_NO_MATERIALS: "Esta rodada não tem referência e instruções. Rode o SQL das rodadas (veja SUPABASE.md).",
     CITD_INVALID_ACTION: "Ação inválida.",
+    CITD_UNKNOWN_DEVICE: "Essa máquina não está mais na rodada. Atualize a página.",
   };
   function errText(error) {
     if (!error) return "";
@@ -166,6 +167,79 @@
     state.live = live;
     renderLive();
     if (changed) await loadRounds();
+    await loadTelao();
+  }
+
+  // ------------------------------------------------- quem aparece no telão
+  async function loadTelao() {
+    var live = state.live;
+    var box = $("#telao-box");
+    if (!live || !live.started_at) { box.hidden = true; return; }
+    var res = await db.rpc("admin_ao_vivo");
+    box.hidden = false;
+    await loadVotacao();
+    if (res.error) {
+      var missing = res.error.code === "PGRST202" || /admin_ao_vivo/.test(res.error.message || "");
+      return fillTable($("#telao-table"), [], missing
+        ? "Telão ao vivo desligado: rode no SQL Editor a migration 20261119120000_telao_ao_vivo.sql (veja SUPABASE.md)."
+        : errText(res.error), 5);
+    }
+    fillTable($("#telao-table"), res.data.map(function (m) {
+      return el("tr", { className: m.tela ? "selected" : "" }, [
+        el("td", { text: m.tela ? "Tela " + m.tela : m.oculto ? "Fora (tirada)" : "Fora (já tem 3)" }),
+        el("td", { text: m.nome }),
+        el("td", { text: fmtTime(m.atualizado) }),
+        el("td", { text: fmtBytes(m.bytes) }),
+        el("td", { className: "actions" }, [el("button", {
+          type: "button", className: m.oculto ? "" : "secondary",
+          text: m.oculto ? "Pôr no telão" : "Tirar do telão",
+          onclick: function () { showOnTelao(m, this); },
+        })]),
+      ]);
+    }), "Nenhum editor mandou código nesta rodada ainda.", 5);
+  }
+
+  // ------------------------------------------------- votação do público
+  // Abre sozinha quando a rodada termina; aqui dá para encerrar (e reabrir).
+  async function loadVotacao() {
+    var line = $("#votacao-painel");
+    var live = state.live;
+    if (!live || liveStatus(live) !== "encerrada") { line.hidden = true; return; }
+    var res = await db.rpc("votacao");
+    var button = $("#votacao-painel-botao");
+    line.hidden = false;
+    if (res.error) {
+      button.hidden = true;
+      $("#votacao-painel-texto").textContent = res.error.code === "PGRST202" || /votacao/.test(res.error.message || "")
+        ? "Votação do público desligada: rode no SQL Editor a migration 20261119150000_votacao_publico.sql (veja SUPABASE.md)."
+        : errText(res.error);
+      return;
+    }
+    var v = res.data;
+    var placar = v.candidatos.map(function (c) { return c.nome + " " + c.votos; }).join(" · ");
+    $("#votacao-painel-texto").textContent = "Votação do público " + (v.status === "aberta" ? "aberta" : "encerrada") +
+      ": " + v.total + (v.total === 1 ? " voto" : " votos") + (placar ? " (" + placar + ")" : "");
+    button.hidden = v.status === "aguardando";
+    button.textContent = v.status === "aberta" ? "Encerrar votação" : "Reabrir votação";
+    button.onclick = function () { setVotacao(v.round, v.status !== "aberta", button); };
+  }
+
+  async function setVotacao(roundId, aberta, button) {
+    button.disabled = true;
+    var res = await db.rpc("admin_votacao", { p_round: roundId, p_aberta: aberta });
+    button.disabled = false;
+    if (res.error) return say(errText(res.error), "error");
+    say(aberta ? "Votação reaberta." : "Votação encerrada: os celulares não votam mais nesta rodada.", "success");
+    await loadVotacao();
+  }
+
+  async function showOnTelao(m, button) {
+    button.disabled = true;
+    var res = await db.rpc("admin_telao_mostrar", { p_round: m.round, p_device: m.device, p_mostrar: m.oculto });
+    button.disabled = false;
+    if (res.error) return say(errText(res.error), "error");
+    say(m.nome + (m.oculto ? " voltou para o telão." : " saiu do telão."), "success");
+    await loadTelao();
   }
 
   function renderLive() {
@@ -326,9 +400,10 @@
   }
 
   // --------------------------------------------------------- importação
-  // Lê de cada pasta rodada-N-nome/assets/ o instructions.html e o page.png.
+  // Lê de cada pasta N-nome/assets/ (ou rodada-N-nome/assets/) o
+  // instructions.html e a referência page.png ou page.jpg.
   // As cópias em pacotes/ (pendrive) e o referencia.html são ignorados.
-  var IMPORT_RE = /(?:^|\/)(rodada-(\d+)-[a-z0-9-]+)\/assets\/(instructions\.html|page\.png)$/;
+  var IMPORT_RE = /(?:^|\/)((?:rodada-)?(\d+)-[a-z0-9-]+)\/assets\/(instructions\.html|page\.(?:png|jpe?g))$/;
 
   function readFile(file, asDataUrl) {
     return new Promise(function (resolve, reject) {
@@ -348,19 +423,19 @@
       var m = IMPORT_RE.exec(path);
       if (!m) return;
       var r = found[m[1]] || (found[m[1]] = { id: m[1], position: Number(m[2]) });
-      if (m[3] === "page.png") r.png = file; else r.instructions = file;
+      if (m[3] === "instructions.html") r.instructions = file; else r.png = file;
     });
     var rounds = Object.keys(found).map(function (k) { return found[k]; })
       .sort(function (a, b) { return a.position - b.position; });
     input.value = "";
     if (!rounds.length) {
-      return say("Nenhuma pasta rodada-N-nome/assets/ encontrada. Escolha a pasta desafios/halloween.", "error");
+      return say("Nenhuma pasta N-nome/assets/ encontrada. Escolha a pasta dos desafios (ex.: desafios/devfestjp).", "error");
     }
     var done = [];
     var failed = [];
     for (var i = 0; i < rounds.length; i++) {
       var r = rounds[i];
-      if (!r.png || !r.instructions) { failed.push(r.id + " (falta page.png ou instructions.html)"); continue; }
+      if (!r.png || !r.instructions) { failed.push(r.id + " (falta page.png/page.jpg ou instructions.html)"); continue; }
       say("Importando " + r.id + "...");
       try {
         var html = await readFile(r.instructions, false);

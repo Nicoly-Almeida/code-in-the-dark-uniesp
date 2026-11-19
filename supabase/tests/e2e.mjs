@@ -37,6 +37,7 @@ function participant(name) {
       : { accept: true, promptText: "yes" },
   });
 }
+const tela1 = `document.querySelectorAll("#telas .tela")[0]`;
 const lockText = `(() => { const l = document.querySelector(".citd-lock"); return l.hidden ? "" : l.textContent; })()`;
 const readOnly = `document.getElementById("editor").env.editor.getReadOnly()`;
 const barMsg = `document.querySelector(".citd-bar .msg").textContent`;
@@ -134,6 +135,25 @@ try {
   await admin.waitFor(`!document.getElementById("round-detail").hidden && document.getElementById("submissions-table").textContent.includes("Ana")`, "entrega no painel", 8000);
   ok("painel abre as entregas da rodada iniciada e mostra a da Ana");
 
+  // ------------------------------------------------------- telão ao vivo
+  await telao.waitFor(`${tela1}.querySelector(".nome").textContent === "Ana" && ${tela1}.querySelector(".linhas").textContent.includes("Pousada da Ana")`, "código da Ana no telão", 8000);
+  await telao.waitFor(`${tela1}.classList.contains("entregue")`, "selo de entregue no telão");
+  if (!(await telao.eval(`!!(${tela1}.querySelector(".c-tag") && ${tela1}.querySelector(".cursor"))`))) throw new Error("telão sem realce ou sem cursor");
+  if (await telao.eval(`document.querySelectorAll("#telas iframe, #telas script, #telas h1").length`)) throw new Error("telão interpretou o HTML do competidor");
+  if (await telao.eval(`document.querySelectorAll("#telas .tela.vazia").length`) !== 2) throw new Error("telão deveria ter 2 telas vazias");
+  if (!(await telao.eval(`document.getElementById("ver-resultados").hidden`))) throw new Error("resultados disponíveis durante a rodada");
+  await admin.waitFor(`!document.getElementById("telao-box").hidden && document.getElementById("telao-table").textContent.includes("Tela 1")`, "Ana na tabela do telão no painel");
+  await shot(telao, "2b-telao-ao-vivo"); await shot(admin, "2b-painel-telao");
+  ok("telão mostra o código da Ana como texto (com realce e cursor) e o selo de entregue; painel lista a Ana na tela 1");
+
+  await admin.waitFor(`[...document.querySelectorAll("#telao-table button")].some((b) => b.textContent === "Tirar do telão")`, "botão Tirar do telão");
+  await admin.eval(`[...document.querySelectorAll("#telao-table button")].find((b) => b.textContent === "Tirar do telão").click()`);
+  await telao.waitFor(`document.querySelectorAll("#telas .tela.vazia").length === 3`, "Ana fora do telão", 6000);
+  await admin.waitFor(`[...document.querySelectorAll("#telao-table button")].some((b) => b.textContent === "Pôr no telão")`, "botão Pôr no telão");
+  await admin.eval(`[...document.querySelectorAll("#telao-table button")].find((b) => b.textContent === "Pôr no telão").click()`);
+  await telao.waitFor(`${tela1}.querySelector(".nome").textContent === "Ana"`, "Ana de volta ao telão", 6000);
+  ok("painel tira a Ana do telão e devolve");
+
   // ---------------------------------------------------------- pausa/retoma
   await admin.eval(`document.getElementById("live-pause").click()`);
   await ana.waitFor(`${lockText}.includes("pausada")`, "editor pausado");
@@ -149,6 +169,8 @@ try {
 
   // -------------------------------------------------------- fim do tempo
   await ana.eval(`document.getElementById("editor").env.editor.insert("<p>versão final</p>")`);
+  await telao.waitFor(`${tela1}.querySelector(".linhas").textContent.includes("versão final")`, "digitação ao vivo no telão", 6000);
+  ok("o que a Ana digita aparece no telão sem precisar entregar");
   await sleep(400); // salva no localStorage (debounce do editor)
   await db.exec(`update public.rounds set ends_at = now() + interval '3 seconds' where position = 1`);
   await ana.waitFor(`${lockText}.includes("Tempo esgotado")`, "tempo esgotado no editor", 10000);
@@ -159,6 +181,52 @@ try {
   if (subs.rows.length !== 2 || !subs.rows[1].code.includes("versão final")) throw new Error(JSON.stringify(subs.rows));
   await shot(ana, "4-editor-fim");
   ok("fim do tempo: editor trava e entrega sozinho a versão final; telão mostra tempo esgotado");
+
+  // ------------------------------------------------- resultados no telão
+  await telao.waitFor(`!document.getElementById("ver-resultados").hidden`, "botão Mostrar resultados");
+  await telao.eval(`document.getElementById("ver-resultados").click()`);
+  await telao.waitFor(`document.body.classList.contains("resultados") && (${tela1}.querySelector(".previa iframe")?.srcdoc || "").includes("versão final")`, "prévia da Ana no telão");
+  const thumb = await telao.eval(`(() => { const f = ${tela1}.querySelector(".previa iframe");
+    return [f.getAttribute("sandbox"), f.srcdoc.includes('<base href="${origin}/editor/assets/">'), document.querySelectorAll("#telas iframe").length]; })()`);
+  if (thumb[0] !== "" || !thumb[1] || thumb[2] !== 1) throw new Error("prévia no telão: " + JSON.stringify(thumb));
+  await telao.send("Runtime.evaluate", { expression: `${tela1}.click()`, userGesture: true });
+  await telao.waitFor(`!document.getElementById("comparar").hidden && document.getElementById("comparar-ref").src.startsWith("data:image/png") && (document.querySelector("#comparar-janela iframe")?.srcdoc || "").includes("versão final")`, "Ana ao lado da referência");
+  const lado = await telao.eval(`(() => { const f = document.querySelector("#comparar-janela iframe"); const img = document.getElementById("comparar-ref");
+    return [document.getElementById("comparar-nome").textContent, f.getAttribute("sandbox"), f.style.width, img.naturalWidth]; })()`);
+  if (lado[0] !== "Ana" || lado[1] !== "" || lado[2] !== lado[3] + "px") throw new Error("comparação: " + JSON.stringify(lado));
+  await sleep(300); await shot(telao, "4b-telao-comparar");
+  await telao.eval(`document.getElementById("comparar-fechar").click()`);
+  await telao.waitFor(`document.getElementById("comparar").hidden && !document.querySelector("#comparar-janela iframe")`, "fechar a comparação");
+  await shot(telao, "4c-telao-resultados");
+  ok("telão: rodada encerrada libera 'Mostrar resultados'; prévia da Ana (sandbox) ao lado da referência, na mesma escala");
+
+  // ------------------------------------------------- voto do público
+  await telao.waitFor(`!document.getElementById("abrir-votacao").hidden`, "botão Votação do público");
+  await telao.eval(`document.getElementById("abrir-votacao").click()`);
+  await telao.waitFor(`!document.getElementById("votacao").hidden && !!document.querySelector("#qr svg path") && document.getElementById("votacao-url").textContent.endsWith("/votar/")`, "QR code da votação");
+  await telao.waitFor(`document.getElementById("votacao-candidatos").textContent.includes("Ana") && document.getElementById("votacao-estado").textContent.includes("Votação aberta · 0 votos")`, "candidatos ao lado do QR");
+  const votarUrl = await telao.eval(`new URL("../votar/", location.href).href`);
+  const eleitor = await chrome.page(votarUrl, { isolated: true });
+  await eleitor.waitFor(`document.querySelectorAll("#candidatos button").length === 1 && !document.querySelector("#candidatos button").disabled`, "votação aberta no celular");
+  if (!(await eleitor.eval(`document.querySelector("#candidatos button").textContent.includes("Ana")`))) throw new Error("celular sem a Ana");
+  await eleitor.eval(`document.querySelector("#candidatos button").click()`);
+  await eleitor.waitFor(`document.querySelector("#candidatos button").getAttribute("aria-pressed") === "true" && document.getElementById("mensagem").textContent.includes("registrado")`, "voto registrado");
+  await telao.waitFor(`document.getElementById("votacao-estado").textContent.includes("1 voto")`, "total de votos no telão");
+  if (await telao.eval(`document.getElementById("votacao-candidatos").textContent.includes("VOTO")`)) throw new Error("placar visível antes de mostrar o resultado");
+  await shot(telao, "4d-telao-qr"); await shot(eleitor, "4e-celular-votou");
+  await telao.eval(`document.getElementById("mostrar-placar").click()`);
+  await telao.waitFor(`!document.getElementById("placar").hidden && (document.querySelector("#placar-lista li.vencedor")?.textContent || "").includes("Ana") && document.getElementById("placar-lista").textContent.includes("1 VOTO · 100%")`, "resultado do público");
+  await telao.waitFor(`document.querySelector("#placar-lista li.vencedor .barra i").style.width === "100%"`, "barra do vencedor");
+  await sleep(1400); await shot(telao, "4f-telao-placar");
+  ok("votação: QR code no telão, celular vota na Ana, telão conta o voto e mostra a Ana vencedora no resultado do público");
+
+  await admin.waitFor(`document.getElementById("votacao-painel-botao").textContent === "Encerrar votação" && document.getElementById("votacao-painel-texto").textContent.includes("1 voto")`, "votação no painel", 8000);
+  await admin.eval(`document.getElementById("votacao-painel-botao").click()`);
+  await eleitor.waitFor(`document.getElementById("mensagem").textContent.startsWith("Votação encerrada") && document.querySelector("#candidatos button").disabled`, "celular vê a votação encerrada", 8000);
+  await telao.waitFor(`document.getElementById("placar-total").textContent === "1 voto no total" && document.getElementById("votacao").classList.contains("fechada")`, "telão com a votação encerrada");
+  await telao.eval(`document.getElementById("votacao-fechar").click()`);
+  await telao.waitFor(`document.getElementById("votacao").hidden`, "fechar a votação no telão");
+  ok("painel encerra a votação: celular trava e o telão mostra o total final");
 
   // Quem abre depois do fim não entrega
   const bia = await participant("Bia");
@@ -201,6 +269,11 @@ try {
   await admin.eval(`[...document.querySelectorAll("#rounds-table tbody tr")][1].querySelector("button").click()`);
   await ana.waitFor(`!document.body.classList.contains("citd-finished") && document.querySelector(".result").style.display === "none"`, "resultado escondido na nova rodada");
   await ana.waitFor(`(document.querySelector(".instructions").srcdoc || "").includes("RODADA 2 · DOCE")`, "instruções da rodada 2");
+  await telao.waitFor(`!document.body.classList.contains("resultados") && document.getElementById("ver-resultados").hidden && !document.querySelector("#telas iframe")`, "telão volta ao código na rodada 2");
+  await telao.waitFor(`document.getElementById("abrir-votacao").hidden`, "votação some do telão na rodada 2");
+  // Abrir as outras páginas pode deixar o "celular" em segundo plano, onde ele
+  // consulta a cada 15 s (de propósito); por isso a espera é maior.
+  await eleitor.waitFor(`document.getElementById("mensagem").textContent.includes("abre quando a rodada terminar") && !document.querySelector("#candidatos button")`, "celular aguardando a próxima votação", 20000);
   const anaCode = await ana.eval(`document.getElementById("editor").env.editor.getValue()`);
   if (anaCode !== "") throw new Error("editor deveria começar vazio na rodada 2: " + anaCode);
   const backup = await ana.eval(`Object.keys(localStorage).filter((k) => k.startsWith("citd_backup_")).map((k) => localStorage[k]).join("|")`);
@@ -219,6 +292,7 @@ try {
   if (!(await bia.eval(`document.querySelector(".deliver-button").disabled`))) throw new Error("Entregar habilitado depois de reiniciar");
   await telao.waitFor(`document.getElementById("label").textContent === "Próxima rodada" && document.getElementById("title").textContent.includes("RODADA 2") && document.getElementById("clock").textContent === "15:00"`, "telão com a rodada 2 pronta");
   if (await telao.eval(`document.body.classList.contains("finished")`)) throw new Error("telão vermelho depois de reiniciar");
+  await telao.waitFor(`document.querySelectorAll("#telas .tela.vazia").length === 3`, "telas vazias depois de reiniciar");
   await admin.waitFor(`!document.getElementById("live-start").hidden && document.getElementById("live-clock").textContent === "15:00"`, "Iniciar no topo");
   const apagadas = await db.query(`select count(*)::int as n from public.submissions where round_id = 'rodada-2-doce-mordida'`);
   if (apagadas.rows[0].n !== 0) throw new Error("entregas não apagadas");
@@ -260,11 +334,11 @@ try {
   if (r2b.rows[0].status !== "pronta" || r2b.rows[0].n !== 0) throw new Error(JSON.stringify(r2b.rows));
   ok("reiniciar volta a rodada para pronta e apaga as entregas");
 
-  const errors = [admin, telao, ana, bia].flatMap((p, i) => p.errors
+  const errors = [admin, telao, ana, bia, eleitor].flatMap((p, i) => p.errors
     .filter((e) => !/favicon\.ico/.test(e)) // o servidor de teste não tem favicon
-    .map((e) => ["admin", "telão", "ana", "bia"][i] + ": " + e));
+    .map((e) => ["admin", "telão", "ana", "bia", "celular"][i] + ": " + e));
   if (errors.length) throw new Error("erros de JS no navegador:\n" + errors.join("\n"));
-  ok("nenhum erro de JavaScript nas 4 páginas");
+  ok("nenhum erro de JavaScript nas 5 páginas");
   console.log(`\n${step} verificações passaram.`);
 } catch (e) {
   console.log(`FALHA depois de ${step} verificações: ${e.message}`);

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src https://*.supabase.co; base-uri 'self'; form-action 'none'">
+  <title>Voto do público | Code in the Dark UNIESP</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32x32.png">
+  <style>
+    @font-face {
+      font-family: "Press Start 2P";
+      src: url("../evento/assets/press-start-2p.ttf") format("truetype");
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: dark;
+      --verde: #4effa1;
+      --verde-tag: rgba(58, 147, 100, .85);
+      --borda: #2a2a2a;
+      --apagado: #8a8a8a;
+      --vermelho: #e94d35;
+      --pixel: "Press Start 2P", "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px 16px 40px;
+      background: #000;
+      color: #fff;
+      font-family: var(--pixel);
+      text-align: center;
+    }
+
+    main { max-width: 520px; margin: 0 auto; }
+
+    .logo { display: block; height: 84px; width: auto; margin: 0 auto 22px; }
+
+    .rotulo {
+      margin: 0;
+      color: var(--verde);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 12px 0 22px;
+      font-size: 15px;
+      font-weight: normal;
+      line-height: 1.6;
+    }
+
+    .mensagem {
+      min-height: 3.6em;
+      margin: 0 0 22px;
+      color: var(--apagado);
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .mensagem.ok { color: var(--verde); }
+    .mensagem.erro { color: var(--vermelho); }
+
+    .candidatos {
+      display: grid;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .candidatos button {
+      width: 100%;
+      min-height: 64px;
+      display: flex;
+      align-items: stretch;
+      padding: 0;
+      border: 2px solid var(--borda);
+      background: #111;
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .candidatos button:disabled { cursor: default; opacity: .55; }
+    .candidatos button:not(:disabled):active { transform: translateY(1px); }
+    .candidatos button:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+
+    .numero {
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      background: #000;
+      color: var(--verde);
+    }
+
+    .nome {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      padding: 14px;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+
+    .escolha {
+      display: none;
+      align-items: center;
+      padding: 0 12px;
+      background: #000;
+      color: var(--verde);
+      font-size: 8px;
+    }
+
+    .candidatos button[aria-pressed="true"] { border-color: var(--verde); }
+    .candidatos button[aria-pressed="true"] .nome { background: var(--verde-tag); }
+    .candidatos button[aria-pressed="true"] .escolha { display: flex; }
+
+    .rodape {
+      margin: 30px 0 0;
+      color: #555;
+      font-size: 8px;
+      line-height: 2;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="logo" src="../img/logo.png" alt="Code in the Dark">
+    <p class="rotulo">Voto do público</p>
+    <h1 id="titulo">Code in the Dark</h1>
+    <p class="mensagem" id="mensagem" role="status" aria-live="polite">Conectando...</p>
+    <ol class="candidatos" id="candidatos" aria-label="Competidores da rodada"></ol>
+    <p class="rodape">Um voto por celular em cada rodada.<br>Dá para trocar enquanto a votação estiver aberta.</p>
+  </main>
+  <script src="../citd-config.js"></script>
+  <script src="votar.js"></script>
+</body>
+</html>
