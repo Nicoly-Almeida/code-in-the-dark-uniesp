@@ -82,7 +82,8 @@ votar/ (celular do público) ─────────────▶ votacao,
 ## DevFest JP 2026: deixar o projeto `chcmtotuohtoyybvljrd` pronto
 
 Uma colagem só faz tudo: aplica as migrations de Reiniciar, do telão ao vivo e
-da votação (todas podem rodar de novo), **apaga as 5 rodadas do Halloween** (com
+da votação (todas podem rodar de novo), **apaga todas as outras rodadas** (Halloween,
+rodadas de teste ou criadas por engano, com
 as entregas, o código ao vivo e os votos delas) e cria as 4 rodadas da DevFest.
 
 1. Abra `desafios/devfestjp/rodadas-devfestjp.sql` (fica só no seu computador),

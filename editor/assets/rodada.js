@@ -325,7 +325,9 @@
     rpc("materiais_rodada", { p_round: state.round }).then(function (m) {
       if (runId(state) !== run) return;
       loadedRun = run;
-      if (referenceImage) referenceImage.style.backgroundImage = 'url("' + m.reference_image + '")';
+      // Espaços ou quebras de linha (ex.: \r de um SQL colado) deixariam o
+      // url(...) inválido e o navegador manteria a referência anterior.
+      if (referenceImage) referenceImage.style.backgroundImage = 'url("' + m.reference_image.replace(/\s+/g, "") + '")';
       if (reference && !document.body.classList.contains("citd-finished")) reference.style.display = "";
       if (instructions) {
         // Conteúdo vindo do banco: sem scripts nem acesso ao editor.
