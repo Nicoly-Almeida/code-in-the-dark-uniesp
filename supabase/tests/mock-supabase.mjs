@@ -6,7 +6,7 @@ import path from "node:path";
 import { as, ORG } from "./db.mjs";
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
-  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg" };
+  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".ttf": "font/ttf" };
 const b64url = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const IDENT = /^[a-z_][a-z0-9_]*$/;
 
@@ -128,7 +128,7 @@ export async function startServer(repo, db) {
       const file = path.join(repo, p);
       if (!file.startsWith(repo) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
       let data = fs.readFileSync(file);
-      if (p === "/admin/index.html") {
+      if (["/admin/index.html", "/evento/index.html", "/votar/index.html"].includes(p)) {
         // A CSP real só libera *.supabase.co; aqui o "Supabase" é este servidor.
         data = Buffer.from(data.toString("utf8").replace("connect-src https://*.supabase.co", "connect-src 'self'"));
       }

@@ -8,9 +8,10 @@
   <!--
     CSP: o painel só executa scripts deste site e só conversa com o Supabase.
     As prévias (iframe srcdoc + sandbox="") herdam esta política: sem scripts,
-    sem formulários, sem requisições externas.
+    sem formulários, sem requisições externas (exceto o Google Fonts, que os
+    desafios pedem).
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src https://*.supabase.co; frame-src 'self'; base-uri 'self'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src https://*.supabase.co; frame-src 'self'; base-uri 'self'; form-action 'none'">
   <title>Painel | Code in the Dark UNIESP</title>
   <link rel="stylesheet" href="admin.css">
 </head>
@@ -51,6 +52,24 @@
         </div>
       </section>
 
+      <section class="box" id="telao-box" hidden>
+        <h2>No telão ao vivo</h2>
+        <p class="hint">
+          O telão mostra o código das 3 primeiras máquinas que entraram na rodada, na ordem em que entraram.
+          O link do editor é público: se alguém que não é competidor abrir o editor, tire a máquina do telão.
+        </p>
+        <p class="round-actions" id="votacao-painel" hidden>
+          <span id="votacao-painel-texto"></span>
+          <button type="button" id="votacao-painel-botao" class="secondary" hidden></button>
+        </p>
+        <div class="table-scroll">
+          <table class="list" id="telao-table">
+            <thead><tr><th>Telão</th><th>Nome</th><th>Última atualização</th><th>Tamanho</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
       <div class="columns">
         <div>
           <h2>Rodadas</h2>
@@ -63,9 +82,9 @@
           <details class="box" id="import-box">
             <summary>Atualizar desafios a partir da pasta (opcional)</summary>
             <p class="hint">
-              Escolha a pasta <code>desafios/halloween</code>. O painel lê de cada
-              <code>rodada-N-nome/assets/</code> só o <code>instructions.html</code> e o
-              <code>page.png</code>. O gabarito (<code>referencia.html</code>) não é enviado.
+              Escolha a pasta dos desafios (ex.: <code>desafios/devfestjp</code>). O painel lê de cada
+              <code>N-nome/assets/</code> só o <code>instructions.html</code> e a referência
+              (<code>page.jpg</code> ou <code>page.png</code>). Nada mais da pasta é enviado.
               As rodadas já vêm prontas pelo SQL (veja <code>SUPABASE.md</code>); use isto só se mudar uma referência ou instrução.
             </p>
             <input type="file" id="import-input" webkitdirectory multiple>

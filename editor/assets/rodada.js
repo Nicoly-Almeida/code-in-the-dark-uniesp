@@ -1,7 +1,7 @@
 // Rodada ao vivo no editor: acompanha o estado da rodada no Supabase, libera
 // referência e instruções no play, mostra o tempo, entrega o código (botão
-// "Entregar" e sozinho quando o tempo acaba) e trava o editor fora do tempo.
-// Não altera o editor legado: usa o Ace já existente e o localStorage
+// "Entregar" e sozinho quando o tempo acaba), trava o editor fora do tempo e
+// manda o código ao vivo para o telão. Não altera o editor legado: usa o Ace já existente e o localStorage
 // (content/name). Depende de ../citd-config.js.
 (function () {
   "use strict";
@@ -406,6 +406,40 @@
     return "";
   }
 
+  // ------------------------------------------------------- telão ao vivo
+  // Durante a rodada manda o código e o cursor para o telão a cada segundo,
+  // só quando algo mudou. É um extra: falhas aqui nunca aparecem para o
+  // participante (o que vale continua sendo a entrega).
+  var LIVE_MS = 1000;
+  var LIVE_RETRY_MS = 5000;
+  var liveSent = "";
+  var liveBusy = false;
+  var liveRetryAt = 0;
+
+  function livePush() {
+    var status = effectiveStatus();
+    var run = runId(state);
+    if (liveBusy || Date.now() < liveRetryAt || !run || read(RUN_KEY) !== run) return;
+    if (!(status === "valendo" || status === "pausada" || (status === "encerrada" && withinGrace()))) return;
+    var ace = getAce();
+    var cursor = ace ? ace.getCursorPosition() : { row: 0, column: 0 };
+    var name = (read("name") || "").trim() || "Sem nome " + deviceId().slice(0, 4);
+    var code = currentCode();
+    var key = [run, name, cursor.row, cursor.column, code].join("\n");
+    if (key === liveSent) return;
+    liveBusy = true;
+    rpc("enviar_ao_vivo", {
+      p_round: state.round, p_device: deviceId(), p_name: name, p_code: code,
+      p_row: cursor.row, p_col: cursor.column,
+    }).then(function () {
+      liveSent = key;
+    }, function () {
+      liveRetryAt = Date.now() + LIVE_RETRY_MS;
+    }).then(function () {
+      liveBusy = false;
+    });
+  }
+
   // ------------------------------------------------------------- Finish
   // O clique é interceptado antes do editor original, que pediria "yes" num
   // prompt em inglês. Aqui o Confirmar só libera com a palavra certa.
@@ -478,5 +512,6 @@
     render();
     if (before === "encerrada" && state) finalDeliver();
   }, 250);
+  setInterval(livePush, LIVE_MS);
   poll();
 })();

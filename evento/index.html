@@ -3,247 +3,685 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f2f0e9">
-  <title>Cronômetro | Code in the Dark UNIESP</title>
+  <meta name="theme-color" content="#000000">
+  <meta name="referrer" content="no-referrer">
+  <!--
+    CSP: o telão só executa scripts deste site e só conversa com o Supabase.
+    As prévias dos competidores (iframe srcdoc + sandbox="") herdam esta
+    política: sem scripts e nada de fora além dos assets do editor e do
+    Google Fonts (os desafios pedem fontes de lá).
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src https://*.supabase.co; frame-src 'self'; base-uri 'self'; form-action 'none'">
+  <title>Telão | Code in the Dark UNIESP</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32x32.png">
   <style>
+    /* Identidade do Code in the Dark: fundo preto, logo, fonte pixelada do
+       editor (Press Start 2P, SIL OFL 1.1), verde do combo e ciano do POWER
+       MODE. As cores do código são as do tema do editor (vibrant ink). */
+    @font-face {
+      font-family: "Press Start 2P";
+      src: url("assets/press-start-2p.ttf") format("truetype");
+      font-display: block;
+    }
+
     :root {
-      color-scheme: light;
-      --paper: #f2f0e9;
-      --ink: #171916;
-      --muted: #65685f;
-      --line: #c9c8bd;
-      --signal: #e94d35;
-      --ready: #c9ed56;
+      color-scheme: dark;
+      --fundo: #000;
+      --tela: rgba(15, 15, 15, .94);
+      --gutter: #1a1a1a;
+      --linha-atual: #333;
+      --texto: #fff;
+      --apagado: #8a8a8a;
+      --borda: #2a2a2a;
+      --verde: #4effa1;
+      --verde-tag: rgba(58, 147, 100, .85);
+      --ciano: #0df;
+      --ciano-tag: rgba(0, 221, 255, .8);
+      --vermelho: #e94d35;
+      --amarelo: #ffcc00;
+      --acento: var(--verde);
+      --pixel: "Press Start 2P", "Courier New", monospace;
+      --mono: Consolas, Menlo, Monaco, "Courier New", monospace;
     }
 
     * { box-sizing: border-box; }
 
+    html, body { height: 100%; }
+
     body {
-      min-height: 100vh;
       margin: 0;
+      overflow: hidden;
       display: grid;
-      place-items: center;
-      background-color: var(--paper);
-      background-image: linear-gradient(rgba(23, 25, 22, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(23, 25, 22, .035) 1px, transparent 1px);
-      background-size: 32px 32px;
-      color: var(--ink);
-      font-family: "Trebuchet MS", "Arial", sans-serif;
+      grid-template-rows: auto 1fr auto;
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: var(--pixel);
     }
 
-    main {
-      width: min(100% - 40px, 920px);
-      padding: 28px 0 36px;
-      text-align: center;
+    /* O logo apagado ao fundo, como no editor. */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: url("../img/logo.png") 50% 58% / auto 62vh no-repeat;
+      opacity: .07;
     }
 
-    .masthead {
-      display: flex;
-      justify-content: space-between;
+    body.final { --acento: var(--ciano); }
+    body.final::before { background-image: url("assets/logo-power.png"); }
+
+    /* ------------------------------------------------------------ topo */
+    .topo {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
-      gap: 16px;
-      padding-bottom: 18px;
-      border-bottom: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
+      gap: 3vw;
+      padding: 2.2vh 2.4vw 2vh;
     }
 
-    .event-name { color: var(--ink); }
+    .logo { display: block; height: 13vh; width: auto; }
+    .logo.power { display: none; }
+    body.final .logo { display: none; }
+    body.final .logo.power { display: block; }
 
-    .round-label {
-      margin: 56px 0 8px;
-      color: var(--signal);
-      font-size: 16px;
-      font-weight: 800;
+    .rodada { min-width: 0; text-align: center; }
+
+    .trilha {
+      display: flex;
+      justify-content: center;
+      gap: .6vw;
+      margin: 0 0 1.6vh;
+      padding: 0;
+      list-style: none;
+      font-size: clamp(8px, .7vw, 16px);
+    }
+
+    .trilha li {
+      padding: .7em .9em;
+      border: 2px solid #333;
+      color: #555;
+    }
+
+    .trilha li.feita { border-color: var(--verde-tag); color: var(--verde); }
+    .trilha li.atual { border-color: var(--acento); background: var(--acento); color: #000; }
+    .trilha li.final { letter-spacing: 1px; }
+
+    .rotulo {
+      margin: 0;
+      color: var(--acento);
+      font-size: clamp(8px, .75vw, 16px);
       letter-spacing: 2px;
       text-transform: uppercase;
     }
 
     h1 {
-      margin: 0;
-      font-size: 32px;
-      line-height: 1.15;
-    }
-
-    .clock {
-      margin: 20px 0 4px;
-      font-family: "Courier New", monospace;
-      font-size: 176px;
-      font-weight: 700;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0;
+      margin: 1.2vh 0;
+      overflow: hidden;
+      font-size: clamp(12px, 1.55vw, 34px);
+      font-weight: normal;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .status {
-      min-height: 28px;
-      margin: 10px 0 30px;
-      color: var(--muted);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 1px;
+      min-height: 1.4em;
+      margin: 0;
+      color: var(--apagado);
+      font-size: clamp(8px, .75vw, 16px);
       text-transform: uppercase;
     }
 
-    .controls {
+    .relogio {
+      color: var(--acento);
+      font-size: clamp(36px, 5.6vw, 120px);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 .25em color-mix(in srgb, var(--acento) 55%, transparent);
+    }
+
+    body.urgente .relogio { color: var(--vermelho); animation: piscar 1s steps(1) infinite; }
+    body.pausada .relogio { color: var(--amarelo); animation: piscar 1.4s steps(1) infinite; }
+    body.finished .relogio, body.finished .status { color: var(--vermelho); }
+    body.finished .relogio { text-shadow: 0 0 .25em rgba(233, 77, 53, .6); }
+
+    @keyframes piscar { 50% { opacity: .35; } }
+
+    /* ----------------------------------------------------------- telas */
+    .telas {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.2vw;
+      padding: 0 2.4vw 1.6vh;
+    }
+
+    body.pausada .telas { opacity: .45; }
+
+    .tela {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--borda);
+      background: var(--tela);
+      transition: border-color .3s, box-shadow .3s;
+    }
+
+    .tela.digitando { border-color: var(--verde-tag); }
+    body.final .tela.digitando { border-color: var(--ciano-tag); }
+    .tela.power {
+      border-color: var(--ciano);
+      box-shadow: 0 0 1.4vw rgba(0, 221, 255, .35);
+    }
+
+    .tela-topo {
+      display: flex;
+      align-items: stretch;
+      font-size: clamp(9px, 1vw, 22px);
+    }
+
+    .numero {
+      padding: .8em .9em;
+      background: #000;
+      color: var(--acento);
+    }
+
+    .nome {
+      flex: 1;
+      min-width: 0;
+      padding: .8em .9em;
+      overflow: hidden;
+      background: var(--verde-tag);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tela.power .nome { background: var(--ciano-tag); }
+    .tela.vazia .nome { background: #1d1d1d; color: #666; }
+
+    .selo {
+      display: none;
+      align-items: center;
+      padding: 0 .9em;
+      font-size: .6em;
+      white-space: nowrap;
+    }
+
+    .tela.entregue .selo { display: flex; background: var(--vermelho); }
+
+    .codigo {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      padding: .5em 0 1.5em;
+      font-family: var(--mono);
+      font-size: clamp(11px, 1vw, 24px);
+      line-height: 1.5;
+      scroll-behavior: smooth;
+    }
+
+    .l { display: flex; min-height: 1.5em; }
+    .l.atual { background: var(--linha-atual); }
+
+    .n {
+      flex: none;
+      width: 3.4em;
+      padding-right: .9em;
+      background: var(--gutter);
+      color: #bebebe;
+      opacity: .55;
+      text-align: right;
+      user-select: none;
+    }
+
+    .l.atual .n { opacity: 1; }
+
+    .t {
+      flex: 1;
+      min-width: 0;
+      padding: 0 .8em;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 0;
+      height: 1.2em;
+      margin-right: -2px;
+      border-left: 2px solid #fff;
+      vertical-align: text-bottom;
+      animation: piscar 1s steps(1) infinite;
+    }
+
+    /* Tema vibrant ink do editor */
+    .c-tag { color: #ff6600; }
+    .c-attr { color: #99cc99; font-style: italic; }
+    .c-str { color: #66ff00; }
+    .c-num { color: #99cc99; }
+    .c-cor { color: #339999; }
+    .c-prop { color: #ffcc00; }
+    .c-com { color: #9933cc; }
+
+    .espera {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2em;
+      color: #555;
+      font-family: var(--pixel);
+      font-size: clamp(8px, .7vw, 15px);
+      line-height: 2;
+      text-align: center;
+    }
+
+    .tela.vazia .espera { display: flex; }
+    .espera::after { content: "_"; animation: piscar 1s steps(1) infinite; }
+
+    .tela-rodape {
+      display: flex;
+      justify-content: space-between;
+      gap: 1em;
+      padding: .9em 1em;
+      border-top: 1px solid var(--borda);
+      color: #666;
+      font-size: clamp(7px, .55vw, 12px);
+      white-space: nowrap;
+    }
+
+    .atividade { color: var(--verde); }
+    .tela.power .atividade { color: var(--ciano); animation: piscar .5s steps(1) infinite; }
+
+    /* ----------------------------------------------------- resultados */
+    .acoes-fim {
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: .8vw;
+      margin-top: 1.2vh;
     }
 
-    button {
-      min-height: 50px;
-      padding: 0 20px;
-      border: 1px solid var(--ink);
-      border-radius: 2px;
-      background: transparent;
-      color: var(--ink);
-      font: inherit;
-      font-size: 15px;
-      font-weight: 800;
+    .acoes-fim:not(:has(button:not([hidden]))) { display: none; }
+
+    .ver-resultados {
+      padding: .9em 1.4em;
+      border-color: var(--acento);
+      background: var(--acento);
+      color: #000;
+      font-size: clamp(8px, .75vw, 16px);
+      text-transform: uppercase;
+    }
+
+    .ver-resultados:hover, .ver-resultados:focus-visible { background: #000; }
+    body.finished:not(.resultados) .ver-resultados { animation: piscar 1.2s steps(1) infinite; }
+
+    .previa {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: none;
+      overflow: hidden;
+      background: #fff;
       cursor: pointer;
     }
 
-    button:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
-    button:hover { background: rgba(23, 25, 22, .07); }
-    button.primary { background: var(--ready); }
-    button.primary:hover { background: #b7dc3e; }
+    body.resultados .tela:not(.vazia) .codigo,
+    body.resultados .tela:not(.vazia) .tela-rodape { display: none; }
+    body.resultados .tela:not(.vazia) .previa { display: block; }
+    body.resultados .tela:not(.vazia) { cursor: pointer; }
+    body.resultados .tela:not(.vazia):hover { border-color: var(--acento); }
 
-    .hint {
-      margin: 22px 0 0;
-      color: var(--muted);
-      font-size: 13px;
+    /* As prévias são desenhadas na largura da referência e reduzidas. */
+    .previa iframe, .comparar iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border: 0;
+      background: #fff;
+      transform-origin: 0 0;
     }
 
-    body.running .round-label { color: var(--ink); }
-    body.finished { background-color: #fbe1dc; }
-    body.finished .round-label, body.finished .status { color: var(--signal); }
+    .previa iframe { pointer-events: none; }
 
-    @media (max-width: 600px) {
-      main { width: min(100% - 28px, 920px); }
-      .masthead { font-size: 11px; }
-      .round-label { margin-top: 42px; font-size: 13px; }
-      h1 { font-size: 26px; }
-      .clock { margin-top: 26px; font-size: 88px; }
-      .status { font-size: 14px; }
-      button { flex: 1 1 40%; padding: 0 12px; }
+    .previa-dica {
+      position: absolute;
+      z-index: 1;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: .9em;
+      background: rgba(0, 0, 0, .85);
+      color: var(--acento);
+      font-size: clamp(7px, .6vw, 13px);
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .comparar, .votacao {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+      outline: none;
+    }
+
+    .comparar[hidden], .votacao[hidden] { display: none; }
+
+    .comparar-topo {
+      display: flex;
+      align-items: stretch;
+      font-size: clamp(10px, 1.1vw, 24px);
+    }
+
+    .comparar-dicas {
+      display: flex;
+      align-items: center;
+      padding: 0 1.2em;
+      color: #666;
+      font-size: .55em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .comparar-topo button { border-width: 0 0 0 2px; font-size: .6em; padding: 0 1.4em; }
+    body.parado .comparar-topo button, body.parado .comparar-dicas { opacity: .25; }
+
+    .comparar-lados {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2vw;
+      padding: 1.2vw;
+    }
+
+    .lado {
+      min-height: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--borda);
+    }
+
+    .lado figcaption {
+      padding: .9em 1em;
+      color: var(--acento);
+      font-size: clamp(8px, .8vw, 16px);
+      text-transform: uppercase;
+    }
+
+    .janela {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .janela.rolavel { overflow-y: auto; background: #0f0f0f; }
+    #comparar-ref { display: block; width: 100%; }
+
+    /* ------------------------------------------------ voto do público */
+    .votacao-corpo {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 5vw;
+      padding: 3vh 6vw;
+    }
+
+    .votacao-corpo[hidden] { display: none; }
+
+    .votacao-qr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2.2vh;
+      text-align: center;
+    }
+
+    .qr {
+      width: min(54vh, 36vw);
+      aspect-ratio: 1;
+      border: .5vw solid var(--acento);
+      background: #fff;
+    }
+
+    .qr svg { display: block; width: 100%; height: 100%; }
+    .votacao.fechada .qr { opacity: .2; }
+
+    .votacao-url {
+      margin: 0;
+      font-size: clamp(9px, .95vw, 20px);
+      overflow-wrap: anywhere;
+    }
+
+    .votacao-estado {
+      margin: 0;
+      color: var(--apagado);
+      font-size: clamp(8px, .8vw, 16px);
+      text-transform: uppercase;
+    }
+
+    .votacao.fechada .votacao-estado { color: var(--vermelho); }
+
+    .votacao-chamada {
+      margin: 0 0 4vh;
+      color: var(--acento);
+      font-size: clamp(10px, 1.1vw, 24px);
+      line-height: 1.8;
+    }
+
+    .candidatos-voto, .placar-lista {
+      display: grid;
+      gap: 2.4vh;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .candidatos-voto li {
+      display: flex;
+      align-items: stretch;
+      border: 2px solid var(--borda);
+      font-size: clamp(14px, 2vw, 44px);
+    }
+
+    .candidatos-voto .nome { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+    .candidatos-voto .vazio { padding: .8em; color: #555; font-size: .5em; }
+
+    .placar { grid-template-columns: 1fr; align-content: center; gap: 0; text-align: center; }
+    .placar .rotulo { font-size: clamp(10px, 1vw, 22px); }
+
+    .placar-titulo {
+      margin: 1.6vh 0 6vh;
+      font-size: clamp(14px, 2.2vw, 48px);
+      font-weight: normal;
+    }
+
+    .placar-lista { width: 100%; text-align: left; }
+
+    .placar-lista li {
+      display: grid;
+      grid-template-columns: auto minmax(0, 22vw) minmax(0, 1fr) 11em;
+      align-items: center;
+      gap: 1.6vw;
+      font-size: clamp(12px, 1.7vw, 36px);
+    }
+
+    .placar-lista .numero { align-self: stretch; display: flex; align-items: center; border: 2px solid var(--borda); }
+    .placar-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .barra { height: 1.8em; border: 2px solid var(--borda); background: #111; }
+
+    .barra i {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--verde-tag);
+      transition: width 1.2s steps(24);
+    }
+
+    .placar-votos { color: #bbb; font-size: .55em; text-align: right; white-space: nowrap; }
+
+    .selo-voto {
+      display: inline-block;
+      margin-left: .8em;
+      padding: .5em .7em;
+      background: var(--acento);
+      color: #000;
+      font-size: .4em;
+      vertical-align: middle;
+    }
+
+    .placar-lista .vencedor .placar-nome { color: var(--acento); }
+    .placar-lista .vencedor .barra i { background: var(--acento); box-shadow: 0 0 1vw color-mix(in srgb, var(--acento) 50%, transparent); }
+    .placar-lista .vencedor .numero { border-color: var(--acento); }
+
+    .placar .votacao-estado { margin: 5vh 0 3vh; }
+    .placar .ver-resultados { justify-self: center; }
+
+    /* ----------------------------------------------------------- rodapé */
+    .rodape {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 16px;
+      padding: 0 2.4vw 1.2vh;
+      color: #444;
+      font-size: 8px;
+      transition: opacity .4s;
+    }
+
+    body.parado .rodape, body.cheia .rodape { opacity: 0; }
+    body.parado { cursor: none; }
+
+    button {
+      padding: 8px 12px;
+      border: 2px solid #333;
+      background: #000;
+      color: #888;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover, button:focus-visible { border-color: var(--acento); color: var(--acento); outline: none; }
+
+    @media (max-width: 900px) {
+      body { overflow: auto; height: auto; }
+      .topo { grid-template-columns: 1fr; justify-items: center; gap: 2vh; text-align: center; }
+      .logo { height: 72px; }
+      .telas { grid-template-columns: 1fr; padding: 0 16px 16px; gap: 16px; }
+      .tela { height: 60vh; }
+      .codigo { font-size: 12px; }
+      .rodape { padding: 0 16px 16px; }
+      .votacao { overflow: auto; }
+      .votacao-corpo { grid-template-columns: 1fr; padding: 16px; gap: 24px; }
+      .qr { width: min(80vw, 360px); border-width: 6px; }
+      .placar-lista li { grid-template-columns: auto minmax(0, 1fr) auto; }
+      .placar-lista .barra { grid-column: 1 / -1; grid-row: 2; }
     }
   </style>
 </head>
 <body>
-  <main>
-    <header class="masthead">
-      <span class="event-name">Code in the Dark</span>
-      <span>UNIESP</span>
-    </header>
-    <p class="round-label" id="label">Aguardando</p>
-    <h1 id="title">Code in the Dark</h1>
-    <div class="clock" id="clock" role="timer" aria-label="sem rodada">--:--</div>
-    <p class="status" id="status" aria-live="polite">Conectando...</p>
-    <div class="controls">
-      <button id="fullscreen" type="button">Tela cheia</button>
+  <header class="topo">
+    <img class="logo" src="../img/logo.png" alt="Code in the Dark">
+    <img class="logo power" src="assets/logo-power.png" alt="Code in the Dark">
+    <div class="rodada">
+      <ol class="trilha" id="trilha" aria-label="Rodadas"></ol>
+      <p class="rotulo" id="label">Aguardando</p>
+      <h1 id="title">Code in the Dark</h1>
+      <p class="status" id="status" aria-live="polite">Conectando...</p>
+      <div class="acoes-fim">
+        <button class="ver-resultados" id="ver-resultados" type="button" hidden>Mostrar resultados</button>
+        <button class="ver-resultados" id="abrir-votacao" type="button" hidden>Votação do público</button>
+      </div>
     </div>
-    <p class="hint">O tempo é controlado pelo painel da organização &nbsp;|&nbsp; F: tela cheia</p>
-  </main>
+    <div class="relogio" id="clock" role="timer" aria-label="sem rodada">--:--</div>
+  </header>
+
+  <main class="telas" id="telas" aria-label="Código dos competidores ao vivo"></main>
+
+  <footer class="rodape">
+    <span>F: tela cheia · com a rodada encerrada, R: resultados · V: votação</span>
+    <button id="fullscreen" type="button">Tela cheia</button>
+  </footer>
+
+  <template id="modelo-tela">
+    <section class="tela vazia">
+      <header class="tela-topo">
+        <span class="numero"></span>
+        <span class="nome">---</span>
+        <span class="selo"></span>
+      </header>
+      <div class="codigo"><div class="linhas"></div><p class="espera"></p></div>
+      <div class="previa"><span class="previa-dica">Clique para comparar</span></div>
+      <footer class="tela-rodape"><span class="medidas"></span><span class="atividade"></span></footer>
+    </section>
+  </template>
+
+  <div class="comparar" id="comparar" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="comparar-nome" hidden>
+    <header class="comparar-topo">
+      <span class="numero" id="comparar-numero"></span>
+      <strong class="nome" id="comparar-nome"></strong>
+      <span class="comparar-dicas">← → troca · Esc volta</span>
+      <button id="comparar-anterior" type="button" aria-label="Competidor anterior">←</button>
+      <button id="comparar-proximo" type="button" aria-label="Próximo competidor">→</button>
+      <button id="comparar-fechar" type="button">Voltar</button>
+    </header>
+    <div class="comparar-lados">
+      <figure class="lado">
+        <figcaption>Ideia original</figcaption>
+        <div class="janela rolavel"><img id="comparar-ref" alt="Referência do desafio"></div>
+      </figure>
+      <figure class="lado">
+        <figcaption id="comparar-legenda">Resultado</figcaption>
+        <div class="janela" id="comparar-janela"></div>
+      </figure>
+    </div>
+  </div>
+
+  <div class="votacao" id="votacao" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="votacao-titulo" hidden>
+    <header class="comparar-topo">
+      <span class="numero">#</span>
+      <strong class="nome" id="votacao-titulo">Voto do público</strong>
+      <span class="comparar-dicas" id="votacao-rodada"></span>
+      <button id="votacao-fechar" type="button">Voltar</button>
+    </header>
+
+    <div class="votacao-corpo" id="votacao-qr-tela">
+      <section class="votacao-qr">
+        <p class="rotulo">Quem leva a rodada?</p>
+        <div class="qr" id="qr" role="img" aria-label="QR code da página de votação"></div>
+        <p class="votacao-url" id="votacao-url"></p>
+        <p class="votacao-estado" id="votacao-estado" aria-live="polite"></p>
+        <button class="ver-resultados" id="mostrar-placar" type="button">Mostrar resultado do público</button>
+      </section>
+      <section class="votacao-lado">
+        <p class="votacao-chamada">Aponte a câmera do celular para o QR code e vote em quem mandou melhor:</p>
+        <ol class="candidatos-voto" id="votacao-candidatos"></ol>
+      </section>
+    </div>
+
+    <div class="votacao-corpo placar" id="placar" hidden>
+      <p class="rotulo">Resultado do público</p>
+      <h2 class="placar-titulo" id="placar-titulo"></h2>
+      <ol class="placar-lista" id="placar-lista"></ol>
+      <p class="votacao-estado" id="placar-total"></p>
+      <button class="ver-resultados" id="voltar-qr" type="button">Voltar ao QR code</button>
+    </div>
+  </div>
+
   <script src="../citd-config.js"></script>
-  <script>
-    // Telão: acompanha a rodada atual no Supabase (play, pausa e fim vêm do painel).
-    (function () {
-      var POLL_MS = 1500;
-      var cfg = window.CITD_CONFIG || {};
-      var label = document.getElementById("label");
-      var title = document.getElementById("title");
-      var clock = document.getElementById("clock");
-      var status = document.getElementById("status");
-      var fullscreen = document.getElementById("fullscreen");
-      var state = null;
-      var offsetMs = 0;
-      var offline = false;
-
-      function rpc(name) {
-        var key = cfg.supabasePublishableKey;
-        return fetch(cfg.supabaseUrl + "/rest/v1/rpc/" + name, {
-          method: "POST",
-          cache: "no-store",
-          headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" },
-          body: "{}",
-        }).then(function (res) {
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          return res.json();
-        });
-      }
-
-      function render() {
-        var now = Date.now() + offsetMs;
-        var phase = state ? state.status : null;
-        var remaining = 0;
-        if (phase === "valendo") {
-          remaining = Math.max(0, Math.ceil((Date.parse(state.ends_at) - now) / 1000));
-          if (remaining === 0) phase = "encerrada";
-        } else if (phase === "pausada") {
-          remaining = state.remaining_seconds;
-        } else if (phase === "pronta") {
-          remaining = state.duration_seconds;
-        }
-
-        var display = state
-          ? String(Math.floor(remaining / 60)).padStart(2, "0") + ":" + String(remaining % 60).padStart(2, "0")
-          : "--:--";
-        clock.textContent = display;
-        clock.setAttribute("aria-label", state ? display + " restantes" : "sem rodada");
-        title.textContent = state ? state.title : "Code in the Dark";
-        document.body.classList.toggle("running", phase === "valendo");
-        document.body.classList.toggle("finished", phase === "encerrada");
-
-        var text = {
-          pronta: ["Próxima rodada", "Aguardando o início"],
-          valendo: ["Rodada em andamento", "Competidores, podem começar"],
-          pausada: ["Rodada pausada", "Rodada pausada"],
-          encerrada: ["Rodada encerrada", "Tempo esgotado: parem de digitar"],
-        }[phase] || ["Aguardando", "Aguardando a próxima rodada"];
-        label.textContent = text[0];
-        status.textContent = offline ? "Sem conexão: tentando de novo..." : text[1];
-      }
-
-      function poll() {
-        var sentAt = Date.now();
-        rpc("estado_atual").then(function (s) {
-          if (s && s.server_now) offsetMs = Date.parse(s.server_now) - (sentAt + Date.now()) / 2;
-          state = s;
-          offline = false;
-        }, function () {
-          offline = true;
-        }).then(function () {
-          render();
-          setTimeout(poll, POLL_MS);
-        });
-      }
-
-      fullscreen.addEventListener("click", function () {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen();
-        } else {
-          document.exitFullscreen();
-        }
-      });
-      document.addEventListener("keydown", function (event) {
-        if (event.altKey || event.ctrlKey || event.metaKey) return;
-        if (event.key.toLowerCase() === "f") fullscreen.click();
-      });
-      document.addEventListener("fullscreenchange", function () {
-        fullscreen.textContent = document.fullscreenElement ? "Sair da tela cheia" : "Tela cheia";
-      });
-
-      if (window.location.protocol === "file:" || !cfg.supabaseUrl || !cfg.supabasePublishableKey) {
-        status.textContent = "Abra pelo endereço publicado do site para acompanhar a rodada.";
-        return;
-      }
-      setInterval(render, 250);
-      poll();
-    })();
-  </script>
+  <script src="vendor/qrcode-generator-2.0.4.js"></script>
+  <script src="telao.js"></script>
 </body>
 </html>

@@ -198,4 +198,177 @@ await t("ação inválida e rodada inexistente", async () => {
   await rejects(ctl("nao-existe", "iniciar"), /CITD_UNKNOWN_ROUND/);
 });
 
+// ------------------------------------------------------------ telão ao vivo
+const DEV3 = "33333333-3333-4333-8333-333333333333";
+const DEV4 = "44444444-4444-4444-8444-444444444444";
+const aoVivo = (round, dev, name, code, row = 0, col = 0) =>
+  anon("select public.enviar_ao_vivo($1, $2, $3, $4, $5, $6) as seq", [round, dev, name, code, row, col]);
+const telao = async (known = {}) =>
+  (await anon("select public.telao_ao_vivo($1::jsonb) as t", [JSON.stringify(known)])).rows[0].t;
+const nomes = (t) => t.telas.map((x) => x.nome);
+const mostrar = (dev, sim) => org("select public.admin_telao_mostrar('rodada-1-a', $1, $2)", [dev, sim]);
+const painel = async () => (await org("select public.admin_ao_vivo() as l")).rows[0].l;
+
+await t("código ao vivo: tabela fechada; RPCs do painel só para organizador", async () => {
+  await rejects(anon("select * from public.live_code"), /permission denied/);
+  await rejects(org("select * from public.live_code"), /permission denied/);
+  await rejects(anon("select public.admin_ao_vivo()"), /permission denied/);
+  await rejects(anon("select public.admin_telao_mostrar('rodada-1-a', $1, false)", [DEV1]), /permission denied/);
+  await rejects(curioso("select public.admin_ao_vivo()"), /CITD_FORBIDDEN/);
+  await rejects(curioso("select public.admin_telao_mostrar('rodada-1-a', $1, false)", [DEV1]), /CITD_FORBIDDEN/);
+});
+
+await t("código ao vivo só depois do play; telão mostra as 3 primeiras máquinas", async () => {
+  assert.equal((await estado()).status, "pronta");
+  assert.equal((await aoVivo("rodada-1-a", DEV1, "Ana", "<h1>")).rows[0].seq, null, "antes do play é ignorado");
+  assert.deepEqual((await telao()).telas, [], "rodada pronta não tem telas");
+  await ctl("rodada-1-a", "iniciar");
+  await aoVivo("rodada-1-a", DEV1, "Ana", "<h1>Ana</h1>", 0, 13);
+  await aoVivo("rodada-1-a", DEV2, "Bia", "");
+  await aoVivo("rodada-1-a", DEV3, "Caio", "<p>Caio</p>");
+  await aoVivo("rodada-1-a", DEV4, "Davi", "<p>Davi</p>");
+  const t1 = await telao();
+  assert.equal(t1.estado.round, "rodada-1-a");
+  assert.equal(t1.estado.status, "valendo");
+  assert.deepEqual([t1.ordem, t1.total], [1, 2]);
+  assert.deepEqual(nomes(t1), ["Ana", "Bia", "Caio"]);
+  assert.deepEqual(t1.telas.map((x) => x.tela), [1, 2, 3]);
+  assert.deepEqual([t1.telas[0].codigo, t1.telas[0].linha, t1.telas[0].coluna], ["<h1>Ana</h1>", 0, 13]);
+  assert.equal(t1.telas[1].codigo, "", "quem ainda não digitou aparece com o editor vazio");
+});
+
+await t("telão só recebe de novo o código que mudou", async () => {
+  const t1 = await telao();
+  const known = Object.fromEntries(t1.telas.map((x) => [x.device, x.seq]));
+  const t2 = await telao(known);
+  assert.deepEqual(t2.telas.map((x) => x.codigo), [null, null, null]);
+  await aoVivo("rodada-1-a", DEV1, "Ana", "<h1>Ana</h1>\n<p>mais</p>", 1, 11);
+  const t3 = await telao(known);
+  assert.equal(t3.telas[0].codigo, "<h1>Ana</h1>\n<p>mais</p>");
+  assert.equal(t3.telas[0].linha, 1);
+  assert.ok(t3.telas[0].seq > known[DEV1]);
+  assert.equal(t3.telas[2].codigo, null);
+});
+
+await t("painel tira e devolve uma máquina do telão", async () => {
+  await mostrar(DEV2, false);
+  assert.deepEqual(nomes(await telao()), ["Ana", "Caio", "Davi"]);
+  const lista = await painel();
+  assert.deepEqual(lista.map((x) => [x.nome, x.oculto, x.tela]),
+    [["Ana", false, 1], ["Bia", true, null], ["Caio", false, 2], ["Davi", false, 3]]);
+  await mostrar(DEV2, true);
+  assert.deepEqual(nomes(await telao()), ["Ana", "Bia", "Caio"]);
+  assert.equal((await painel())[3].tela, null, "a 4ª máquina fica fora do telão");
+  await rejects(mostrar("55555555-5555-4555-8555-555555555555", false), /CITD_UNKNOWN_DEVICE/);
+});
+
+await t("telão mostra quem já entregou", async () => {
+  assert.equal((await telao()).telas[0].entregue, null);
+  await entregar("rodada-1-a", DEV1, "Ana", "<h1>Ana</h1>");
+  assert.ok((await telao()).telas[0].entregue);
+  assert.equal((await telao()).telas[1].entregue, null);
+});
+
+await t("validação e teto de máquinas do código ao vivo", async () => {
+  await rejects(aoVivo("rodada-1-a", DEV1, " ", "x"), /CITD_INVALID_NAME/);
+  await rejects(aoVivo("rodada-1-a", DEV1, "Ana", "x".repeat(1000001)), /CITD_CODE_TOO_LARGE/);
+  await rejects(aoVivo("nao-existe", DEV1, "Ana", "x"), /CITD_UNKNOWN_ROUND/);
+  await db.exec(`insert into public.live_code (round_id, device_id, run_started_at, name)
+    select 'rodada-1-a', gen_random_uuid(), r.started_at, 'extra'
+      from public.rounds r, generate_series(1, 96) where r.id = 'rodada-1-a'`);
+  await rejects(aoVivo("rodada-1-a", "66666666-6666-4666-8666-666666666666", "Novo", "x"), /CITD_RATE_LIMIT/);
+  await aoVivo("rodada-1-a", DEV1, "Ana", "quem já está continua mandando");
+  await db.exec(`delete from public.live_code where name = 'extra'`);
+});
+
+await t("reiniciar esvazia o telão; no play seguinte a fila recomeça", async () => {
+  await mostrar(DEV1, false);
+  await ctl("rodada-1-a", "reiniciar");
+  assert.deepEqual((await telao()).telas, []);
+  assert.equal((await aoVivo("rodada-1-a", DEV1, "Ana", "x")).rows[0].seq, null, "depois de reiniciar é ignorado");
+  assert.deepEqual((await telao()).telas, []);
+  await ctl("rodada-1-a", "iniciar");
+  await aoVivo("rodada-1-a", DEV3, "Caio", "");
+  await aoVivo("rodada-1-a", DEV1, "Ana", "");
+  assert.deepEqual(nomes(await telao()), ["Caio", "Ana"], "Ana volta ao telão e entra depois do Caio");
+  assert.deepEqual((await painel()).map((x) => x.nome), ["Caio", "Ana"], "painel ignora o play anterior");
+});
+
+await t("pausada aceita; depois do fim só na tolerância de 60 s", async () => {
+  await ctl("rodada-1-a", "pausar");
+  await aoVivo("rodada-1-a", DEV1, "Ana", "na pausa");
+  await ctl("rodada-1-a", "retomar");
+  await db.exec(`update public.rounds set ends_at = now() - interval '30 seconds' where id = 'rodada-1-a'`);
+  await aoVivo("rodada-1-a", DEV1, "Ana", "logo depois do fim");
+  const t1 = await telao();
+  assert.equal(t1.estado.status, "encerrada");
+  assert.equal(t1.telas.find((x) => x.nome === "Ana").codigo, "logo depois do fim", "telão encerrado mantém o código final");
+  await db.exec(`update public.rounds set ends_at = now() - interval '2 minutes' where id = 'rodada-1-a'`);
+  assert.equal((await aoVivo("rodada-1-a", DEV1, "Ana", "tarde demais")).rows[0].seq, null);
+  assert.equal((await telao()).telas.find((x) => x.nome === "Ana").codigo, "logo depois do fim", "o atrasado não grava");
+});
+
+// ------------------------------------------------------------- votação
+const ELEITOR1 = "e1111111-1111-4111-8111-111111111111";
+const ELEITOR2 = "e2222222-2222-4222-8222-222222222222";
+const ELEITOR3 = "e3333333-3333-4333-8333-333333333333";
+const votacao = async (eleitor = null) => (await anon("select public.votacao($1) as v", [eleitor])).rows[0].v;
+const votar = (eleitor, dev) => anon("select public.votar($1, $2) as at", [eleitor, dev]);
+const placar = (v) => v.candidatos.map((c) => [c.nome, c.votos]);
+
+await t("votação: votos fechados; candidatos internos; painel só para organizador", async () => {
+  await rejects(anon("select * from public.votes"), /permission denied/);
+  await rejects(anon("select * from public.candidatos_votacao()"), /permission denied/);
+  await rejects(anon("select public.admin_votacao('rodada-1-a', false)"), /permission denied/);
+  await rejects(curioso("select public.admin_votacao('rodada-1-a', false)"), /CITD_FORBIDDEN/);
+});
+
+await t("votação abre com a rodada encerrada, só para os competidores do telão", async () => {
+  const v = await votacao();
+  assert.deepEqual([v.round, v.status, v.total], ["rodada-1-a", "aberta", 0]);
+  assert.deepEqual(placar(v), [["Caio", 0], ["Ana", 0]]);
+  assert.deepEqual(v.candidatos.map((c) => c.tela), [1, 2]);
+  await votar(ELEITOR1, DEV1);
+  await votar(ELEITOR2, DEV1);
+  await votar(ELEITOR3, DEV3);
+  await rejects(votar(ELEITOR1, DEV4), /CITD_INVALID_VOTE/, "Davi não está no telão");
+  await rejects(votar(null, DEV1), /CITD_INVALID_VOTE/);
+  const depois = await votacao(ELEITOR1);
+  assert.deepEqual(placar(depois), [["Caio", 1], ["Ana", 2]]);
+  assert.equal(depois.total, 3);
+  assert.equal(depois.meu_voto, DEV1);
+  assert.equal((await votacao()).meu_voto, null);
+});
+
+await t("trocar o voto: vale o último, um voto por celular", async () => {
+  await votar(ELEITOR1, DEV3);
+  const v = await votacao(ELEITOR1);
+  assert.deepEqual(placar(v), [["Caio", 2], ["Ana", 1]]);
+  assert.equal(v.total, 3);
+  assert.equal(v.meu_voto, DEV3);
+});
+
+await t("painel encerra e reabre a votação", async () => {
+  await org("select public.admin_votacao('rodada-1-a', false)");
+  assert.equal((await votacao()).status, "encerrada");
+  await rejects(votar(ELEITOR2, DEV3), /CITD_VOTING_CLOSED/);
+  assert.deepEqual(placar(await votacao()), [["Caio", 2], ["Ana", 1]], "o placar continua visível");
+  await org("select public.admin_votacao('rodada-1-a', true)");
+  assert.equal((await votacao()).status, "aberta");
+  await votar(ELEITOR2, DEV3);
+  assert.deepEqual(placar(await votacao()), [["Caio", 3], ["Ana", 0]]);
+  await rejects(org("select public.admin_votacao('nao-existe', false)"), /CITD_UNKNOWN_ROUND/);
+});
+
+await t("rodada seguinte valendo: votação aguardando e sem candidatos", async () => {
+  await ctl("rodada-1-a", "encerrar");
+  await ctl("rodada-2-b", "reiniciar");
+  await ctl("rodada-2-b", "iniciar");
+  const v = await votacao(ELEITOR1);
+  assert.deepEqual([v.round, v.status, v.total, v.candidatos, v.meu_voto], ["rodada-2-b", "aguardando", 0, [], null]);
+  await rejects(votar(ELEITOR1, DEV1), /CITD_VOTING_CLOSED/);
+  await ctl("rodada-2-b", "encerrar");
+  assert.equal((await votacao()).status, "aberta", "abre sozinha no fim");
+});
+
 console.log(`\n${passed} testes passaram${process.exitCode ? ", com falhas" : ""}.`);
